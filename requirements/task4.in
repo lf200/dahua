@@ -1,0 +1,2 @@
+# Task 4 runtime dependency. Keep the benchmark API pinned.
+agentdojo==0.1.35

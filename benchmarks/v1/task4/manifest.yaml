@@ -1,0 +1,9 @@
+contract_version: "1.0"
+task_id: 4
+benchmark_version: v1
+quick_cases: 16
+full_cases: 48
+files:
+  - path: matrix.yaml
+    sha256: e60038251ba5625600b650aea43f94d17da04999c1e4de2a8117da8d0298ac73
+    cases: 48
