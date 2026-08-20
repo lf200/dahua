@@ -21,8 +21,18 @@ def test_frozen_matrix_has_exact_quick_and_full_counts() -> None:
     quick = benchmark_cases(matrix, "quick")
     assert len(quick) == 16
     assert len(benchmark_cases(matrix, "full")) == 48
-    assert {case.user_task_id for case in matrix.cases} == {"user_task_0", "user_task_18", "user_task_32"}
+    assert {case.user_task_id for case in matrix.cases} == {
+        "user_task_0",
+        "user_task_18",
+        "user_task_32",
+    }
     assert {case.attack for case in matrix.cases} == {
+        "none",
+        "important_instructions",
+        "tool_knowledge",
+        "dos",
+    }
+    assert {case.attack for case in quick} == {
         "none",
         "important_instructions",
         "tool_knowledge",
@@ -61,7 +71,9 @@ def test_runtime_loader_rejects_tampered_matrix(tmp_path) -> None:
         ("full_cases: 48", "full_cases: 47"),
     ],
 )
-def test_runtime_loader_rejects_wrong_manifest_identity_or_counts(tmp_path, old, new) -> None:
+def test_runtime_loader_rejects_wrong_manifest_identity_or_counts(
+    tmp_path, old, new
+) -> None:
     matrix_path = tmp_path / "matrix.yaml"
     manifest_path = tmp_path / "manifest.yaml"
     shutil.copyfile(DEFAULT_MATRIX_PATH, matrix_path)
@@ -72,9 +84,10 @@ def test_runtime_loader_rejects_wrong_manifest_identity_or_counts(tmp_path, old,
 
 
 def test_benchmark_files_are_lf_normalized() -> None:
-    attributes = DEFAULT_MATRIX_PATH.parents[3] / ".gitattributes"
+    attributes = DEFAULT_MATRIX_PATH.parent / ".gitattributes"
     rules = attributes.read_text(encoding="utf-8")
-    assert "benchmarks/v1/task4/matrix.yaml text eol=lf" in rules
+    assert "matrix.yaml text eol=lf" in rules
+    assert "manifest.yaml text eol=lf" in rules
     assert b"\r\n" not in DEFAULT_MATRIX_PATH.read_bytes()
 
 
@@ -84,7 +97,12 @@ def test_dynamic_selection_is_seeded_and_defense_paired() -> None:
         "matrix": matrix,
         "profile": "quick",
         "seed": 91,
-        "available_user_tasks": ["user_task_0", "user_task_2", "user_task_18", "user_task_32"],
+        "available_user_tasks": [
+            "user_task_0",
+            "user_task_2",
+            "user_task_18",
+            "user_task_32",
+        ],
         "available_injection_tasks": [
             "injection_task_0",
             "injection_task_1",
@@ -99,7 +117,10 @@ def test_dynamic_selection_is_seeded_and_defense_paired() -> None:
     for index in range(0, len(first), 2):
         assert first[index].defense == "none"
         assert first[index + 1].defense == "tool_filter"
-        assert first[index].case_id.rsplit("-", 1)[0] == first[index + 1].case_id.rsplit("-", 1)[0]
+        assert (
+            first[index].case_id.rsplit("-", 1)[0]
+            == first[index + 1].case_id.rsplit("-", 1)[0]
+        )
 
 
 def test_injection_task_3_is_consistently_context_leakage() -> None:

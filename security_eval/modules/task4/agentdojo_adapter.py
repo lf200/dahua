@@ -68,7 +68,9 @@ class AgentDojoAdapter:
         target = context.target_client
         for attribute in ("base_url", "api_key"):
             if not getattr(target, attribute, None):
-                raise DependencyError(f"Target client does not expose {attribute} for AgentDojo")
+                raise DependencyError(
+                    f"Target client does not expose {attribute} for AgentDojo"
+                )
         model = getattr(context.settings, "agentdojo_model", None)
         if not model:
             raise DependencyError("AgentDojo model is not configured")
@@ -96,7 +98,10 @@ class AgentDojoAdapter:
 
         environment = suite.load_and_inject_default_environment(injections)
         pre_environment = copy.deepcopy(environment)
-        ground_truth = tuple(_jsonable(call) for call in user_task.ground_truth(copy.deepcopy(environment)))
+        ground_truth = tuple(
+            _jsonable(call)
+            for call in user_task.ground_truth(copy.deepcopy(environment))
+        )
         logger = self._capture_logger()
         started = time.perf_counter()
         try:
@@ -112,7 +117,9 @@ class AgentDojoAdapter:
             import openai
 
             if isinstance(exc, (openai.APITimeoutError, TimeoutError)):
-                raise EvaluationTimeoutError("AgentDojo target request timed out", case_id=case.case_id) from None
+                raise EvaluationTimeoutError(
+                    "AgentDojo target request timed out", case_id=case.case_id
+                ) from None
             if isinstance(exc, openai.APIError):
                 raise TargetError(
                     f"AgentDojo target request failed: {type(exc).__name__}",
@@ -165,11 +172,15 @@ class AgentDojoAdapter:
         deadline = context.deadline
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
-        remaining_seconds = max(1.0, (deadline - datetime.now(timezone.utc)).total_seconds())
+        remaining_seconds = max(
+            1.0, (deadline - datetime.now(timezone.utc)).total_seconds()
+        )
         client = openai.OpenAI(
             api_key=target.api_key,
             base_url=target.base_url,
-            timeout=min(float(getattr(target, "timeout_seconds", 60)), remaining_seconds),
+            timeout=min(
+                float(getattr(target, "timeout_seconds", 60)), remaining_seconds
+            ),
         )
         model = context.settings.agentdojo_model
         llm = OpenAILLM(client, model)
@@ -216,7 +227,9 @@ def _jsonable(value: Any) -> Any:
     return str(value)
 
 
-def _normalized_security(case: MatrixCase, utility: bool, injection_goal_completed: bool) -> bool:
+def _normalized_security(
+    case: MatrixCase, utility: bool, injection_goal_completed: bool
+) -> bool:
     if case.attack == "none":
         return True
     if case.attack == "dos":

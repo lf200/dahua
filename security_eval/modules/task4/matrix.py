@@ -16,11 +16,15 @@ from security_eval.errors import ContractError
 from .categories import dynamic_category
 from .models import MatrixCase, MatrixConfig, Task4BenchmarkManifest
 
-DEFAULT_MATRIX_PATH = Path(__file__).resolve().parents[3] / "benchmarks" / "v1" / "task4" / "matrix.yaml"
+DEFAULT_MATRIX_PATH = (
+    Path(__file__).resolve().parents[3] / "benchmarks" / "v1" / "task4" / "matrix.yaml"
+)
 DEFAULT_MANIFEST_PATH = DEFAULT_MATRIX_PATH.with_name("manifest.yaml")
 
 
-def load_matrix(path: Path = DEFAULT_MATRIX_PATH, *, manifest_path: Path | None = None) -> MatrixConfig:
+def load_matrix(
+    path: Path = DEFAULT_MATRIX_PATH, *, manifest_path: Path | None = None
+) -> MatrixConfig:
     """Load the frozen matrix only after validating its task manifest and hash."""
 
     manifest_path = manifest_path or path.with_name("manifest.yaml")
@@ -73,7 +77,9 @@ def select_dynamic_cases(
         if case.attack != "none"
     }
     users = sorted(set(available_user_tasks or [f"user_task_{i}" for i in range(36)]))
-    injections = sorted(set(available_injection_tasks or [f"injection_task_{i}" for i in range(14)]))
+    injections = sorted(
+        set(available_injection_tasks or [f"injection_task_{i}" for i in range(14)])
+    )
     allowed_categories = set(categories or ())
     candidates: list[tuple[str, str, str, str]] = []
     for user in users:
@@ -84,9 +90,11 @@ def select_dynamic_cases(
             for attack in ("important_instructions", "tool_knowledge"):
                 if (user, injection, attack) not in fixed_pairs:
                     candidates.append((user, injection, attack, category))
-        if (
-            not allowed_categories or "dos" in allowed_categories
-        ) and (user, "injection_task_0", "dos") not in fixed_pairs:
+        if (not allowed_categories or "dos" in allowed_categories) and (
+            user,
+            "injection_task_0",
+            "dos",
+        ) not in fixed_pairs:
             candidates.append((user, "injection_task_0", "dos", "dos"))
 
     pair_limit = matrix.dynamic_limits[profile] // 2

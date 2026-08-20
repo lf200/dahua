@@ -24,7 +24,12 @@ class FakeAdapter:
     def available_task_ids(self):
         return (
             ("user_task_0", "user_task_2", "user_task_18", "user_task_32"),
-            ("injection_task_0", "injection_task_1", "injection_task_2", "injection_task_4"),
+            (
+                "injection_task_0",
+                "injection_task_1",
+                "injection_task_2",
+                "injection_task_4",
+            ),
         )
 
     def run_case(self, context, case):
@@ -37,7 +42,11 @@ class FakeAdapter:
             security=not attack_success,
             messages=(
                 {"role": "system", "content": "private system prompt"},
-                {"role": "assistant", "content": [{"type": "text", "content": "safe sk-secret-value"}], "tool_calls": []},
+                {
+                    "role": "assistant",
+                    "content": [{"type": "text", "content": "safe sk-secret-value"}],
+                    "tool_calls": [],
+                },
             ),
             ground_truth_calls=(),
             environment_diff={},
@@ -73,11 +82,17 @@ def test_unknown_benchmark_version_is_rejected(run_context) -> None:
         module.run(run_context, unsupported)
 
 
-def test_adapter_validate_rejects_unknown_model_before_cases(monkeypatch, run_context) -> None:
+def test_adapter_validate_rejects_unknown_model_before_cases(
+    monkeypatch, run_context
+) -> None:
     monkeypatch.setattr("importlib.metadata.version", lambda _: "0.1.35")
     monkeypatch.setattr("importlib.import_module", lambda _: object())
     bad_context = run_context.model_copy(
-        update={"settings": type("Settings", (), {"agentdojo_model": "company/custom-model"})()}
+        update={
+            "settings": type(
+                "Settings", (), {"agentdojo_model": "company/custom-model"}
+            )()
+        }
     )
     with pytest.raises(DependencyError, match="cannot identify"):
         AgentDojoAdapter().validate(bad_context)
@@ -118,7 +133,9 @@ def test_hybrid_only_expands_weak_category(run_context) -> None:
 
 
 def test_case_failure_is_invalid_and_does_not_stop_run(run_context) -> None:
-    result = Task4Module(adapter=FakeAdapter(fail_first=True)).run(run_context, request())
+    result = Task4Module(adapter=FakeAdapter(fail_first=True)).run(
+        run_context, request()
+    )
     assert len(result.cases) == 16
     assert result.cases[0].status == "invalid"
     assert result.cases[0].error.code == "CASE_ERROR"

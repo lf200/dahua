@@ -5,5 +5,5 @@ quick_cases: 16
 full_cases: 48
 files:
   - path: matrix.yaml
-    sha256: be2908ea6d58ba71df87eef46dc73e6e1c5e9f3a27181c32e300433bc417d90d
+    sha256: 8473edf6156470f8b1e9ac6e774617c35f44516bb60169c98f99cbfe7dc20c41
     cases: 48
