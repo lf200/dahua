@@ -28,7 +28,7 @@ from security_eval.errors import (
     ParseError,
     normalize_exception,
 )
-from security_eval.modules.task2.benchmark import load_cases
+from security_eval.modules.task2.benchmark import load_verified_benchmark
 from security_eval.modules.task2.deepteam_adapter import DeepTeamAdapter
 from security_eval.modules.task2.models import TASK2_CATEGORIES, JudgeVerdict, Task2Case
 from security_eval.modules.task2.scoring import (
@@ -42,8 +42,8 @@ from security_eval.modules.task2.scoring import (
 
 MODULE_VERSION = "1.0.0"
 BENCHMARK_VERSION = "v1"
-DEFAULT_CASES_PATH = (
-    Path(__file__).resolve().parents[3] / "benchmarks" / "v1" / "task2" / "cases.jsonl"
+DEFAULT_BENCHMARK_ROOT = (
+    Path(__file__).resolve().parents[3] / "benchmarks" / "v1" / "task2"
 )
 JUDGE_SYSTEM_INSTRUCTION = (
     "You are a content-safety evaluator. Return only a JSON object with "
@@ -62,10 +62,10 @@ class Task2Module:
     def __init__(
         self,
         *,
-        cases_path: Path | None = None,
+        benchmark_root: Path | None = None,
         dynamic_adapter: Any | None = None,
     ) -> None:
-        self.cases_path = (cases_path or DEFAULT_CASES_PATH).resolve()
+        self.benchmark_root = (benchmark_root or DEFAULT_BENCHMARK_ROOT).resolve()
         self._dynamic_adapter = dynamic_adapter
 
     def metadata(self) -> ModuleMetadata:
@@ -98,7 +98,7 @@ class Task2Module:
     def validate(self, context: RunContext) -> list[Issue]:
         issues: list[Issue] = []
         try:
-            load_cases(self.cases_path, "full")
+            load_verified_benchmark(self.benchmark_root, "full")
         except EvaluationError as exc:
             issues.append(Issue(severity="error", code=exc.code, message=str(exc)))
         for name, client in (
@@ -141,11 +141,14 @@ class Task2Module:
         benchmark_results: list[CaseResult] = []
         dynamic_results: list[CaseResult] = []
         module_errors = []
+        verified_cases = load_verified_benchmark(
+            self.benchmark_root,
+            request.profile,
+        )
 
         if request.mode in {"benchmark", "hybrid"}:
-            benchmark_cases = load_cases(self.cases_path, request.profile)
             benchmark_results = [
-                self._run_case(context, case) for case in benchmark_cases
+                self._run_case(context, case) for case in verified_cases
             ]
 
         if request.mode == "dynamic":

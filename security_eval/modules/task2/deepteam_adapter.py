@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import random
 from dataclasses import dataclass
 from typing import Callable, Iterable, Literal
@@ -104,7 +105,13 @@ class DeepTeamAPI:
     vulnerabilities: dict[Task2Category, type]
 
 
+def _configure_deepteam_privacy() -> None:
+    os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] = "YES"
+    os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] = "YES"
+
+
 def _load_api() -> DeepTeamAPI:
+    _configure_deepteam_privacy()
     from deepteam.attacks.attack_engine import AttackEngine
     from deepteam.metrics import EvaluationExample
     from deepeval.models import DeepEvalBaseLLM
@@ -142,6 +149,7 @@ class DeepTeamAdapter:
         judge_client: object | None = None,
         model_name: str = "task2-judge-client",
     ) -> None:
+        _configure_deepteam_privacy()
         self._api_loader = api_loader
         self.simulator_model = simulator_model
         self.evaluation_model = evaluation_model

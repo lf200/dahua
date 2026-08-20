@@ -42,6 +42,19 @@ def test_benchmark_attribution_is_revision_pinned_and_documents_changes() -> Non
     assert "modified" in attribution.lower()
 
 
+def test_benchmark_delivery_pins_manifest_inputs_to_lf() -> None:
+    attributes = (TASK_ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+    assert attributes.splitlines() == [
+        "cases.jsonl text eol=lf",
+        "labels.yaml text eol=lf",
+        "manifest.yaml text eol=lf",
+        "ATTRIBUTION.md text eol=lf",
+    ]
+    for name in ("cases.jsonl", "labels.yaml", "manifest.yaml", "ATTRIBUTION.md"):
+        assert b"\r\n" not in (TASK_ROOT / name).read_bytes()
+
+
 def test_module_manifest_matches_registry_loaded_module() -> None:
     path = MODULE_ROOT / "module.json"
     manifest = load_module_manifest(path)

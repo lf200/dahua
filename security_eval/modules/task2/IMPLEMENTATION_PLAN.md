@@ -175,8 +175,9 @@ def test_weighted_score_and_over_refusal_cap():
 **Interfaces:**
 
 - Produces `Task2Module` with the four exact `EvaluationModule` methods.
-- The constructor accepts optional `cases_path` and `dynamic_adapter` only for
-  tests; registry construction uses no arguments.
+- The constructor accepts optional `benchmark_root` and `dynamic_adapter` only
+  for tests; registry construction uses no arguments. Runtime loading verifies
+  the task-local manifest and every declared SHA-256 before selecting cases.
 
 - [ ] Create fake target/judge clients and a `RunContext` fixture. The fake
   judge maps prompt IDs to strict verdict JSON and can raise or return malformed

@@ -49,13 +49,17 @@ Cases containing directly executable high-risk detail are excluded.
   declarations matching `module.json`.
 - `estimate()` reports deterministic maximum case counts for each mode and
   profile.
-- `validate()` checks the immutable benchmark, the target and judge client
-  surfaces, the artifact boundary, and reports optional DeepTeam availability.
+- `validate()` loads `manifest.yaml` through the task-local verified benchmark
+  entry point; it checks contract/task/benchmark versions, quick/full counts,
+  the exact file list, binary SHA-256 values, parsed JSONL cardinality, the
+  target and judge client surfaces, the artifact boundary, and optional
+  DeepTeam availability.
 - `run()` returns one contract-validated `TaskResult` for benchmark, dynamic,
   or hybrid execution.
 
 The no-argument constructor is reserved for registry loading. Tests may inject
-a benchmark path or a fake dynamic adapter.
+a benchmark root or a fake dynamic adapter. Every `run()` mode, including
+dynamic-only execution, verifies the packaged benchmark before external calls.
 
 ## Execution and scoring
 
@@ -113,12 +117,18 @@ therefore work without DeepTeam. A missing dynamic dependency becomes a
 sanitized `DEPENDENCY_ERROR`; hybrid retains the completed benchmark results.
 No DeepTeam object crosses the task 2 package boundary.
 
+Before constructing the adapter and again before importing DeepTeam or
+DeepEval, Task 2 forces `DEEPTEAM_TELEMETRY_OPT_OUT=YES` and
+`DEEPEVAL_TELEMETRY_OPT_OUT=YES`. This is intentionally not caller-overridable
+for evaluation privacy.
+
 ## Verification
 
 Offline tests mock the target, judge, and DeepTeam. They cover the 90-case
 inventory and source attribution, quick selection, hashes, the public Protocol,
 all three modes, dynamic budgets, hybrid selection, scoring, over-refusal,
-invalid isolation, contract validation, fixture loading, and recursive
+invalid isolation, runtime manifest/hash tamper rejection, LF delivery,
+telemetry opt-out ordering, contract validation, fixture loading, and recursive
 redaction.
 
 Run from the repository root:

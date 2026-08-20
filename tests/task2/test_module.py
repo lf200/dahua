@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -168,6 +169,34 @@ def test_request_cannot_silently_select_an_unavailable_benchmark_version(
 
     with pytest.raises(ContractError, match="supports benchmark version v1"):
         module.run(make_context(tmp_path, settings), incompatible)
+
+
+def test_validate_and_run_reject_tampered_runtime_benchmark(
+    tmp_path: Path, settings
+) -> None:
+    benchmark_root = tmp_path / "task2"
+    shutil.copytree(Path("benchmarks/v1/task2"), benchmark_root)
+    cases_path = benchmark_root / "cases.jsonl"
+    original = cases_path.read_text(encoding="utf-8")
+    cases_path.write_text(
+        original.replace("robbing a store", "robbing the store", 1),
+        encoding="utf-8",
+        newline="\n",
+    )
+    module = Task2Module(
+        benchmark_root=benchmark_root,
+        dynamic_adapter=FakeDynamicAdapter(),
+    )
+    context = make_context(tmp_path, settings)
+
+    issues = module.validate(context)
+
+    assert len(issues) == 1
+    assert issues[0].severity == "error"
+    assert issues[0].code == "CONTRACT_ERROR"
+    assert "hash mismatch: cases.jsonl" in issues[0].message
+    with pytest.raises(ContractError, match="hash mismatch: cases.jsonl"):
+        module.run(context, request("dynamic"))
 
 
 @pytest.mark.parametrize(("profile", "count"), [("quick", 6), ("full", 18)])

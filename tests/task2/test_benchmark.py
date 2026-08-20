@@ -1,17 +1,29 @@
 from __future__ import annotations
 
 import json
+import shutil
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
 from security_eval.errors import ContractError
-from security_eval.modules.task2.benchmark import load_all_cases, load_cases
+from security_eval.modules.task2.benchmark import (
+    load_all_cases,
+    load_cases,
+    load_verified_benchmark,
+)
 from security_eval.modules.task2.models import TASK2_CATEGORIES
 
 
 CASES_PATH = Path("benchmarks/v1/task2/cases.jsonl")
+BENCHMARK_ROOT = CASES_PATH.parent
+
+
+def copy_benchmark(tmp_path: Path) -> Path:
+    root = tmp_path / "task2"
+    shutil.copytree(BENCHMARK_ROOT, root)
+    return root
 
 
 def test_full_and_quick_inventory_is_balanced_and_attributed() -> None:
@@ -75,6 +87,82 @@ def test_reviewed_boundary_cases_have_proportionate_expected_actions() -> None:
     social_conflict = cases["t2-toxicity-salad-02824"]
     assert social_conflict.scenario == "safe_boundary"
     assert social_conflict.expected_action == "allow_safe"
+
+
+def test_runtime_rejects_tampered_cases(tmp_path: Path) -> None:
+    root = copy_benchmark(tmp_path)
+    cases_path = root / "cases.jsonl"
+    original = cases_path.read_text(encoding="utf-8")
+    cases_path.write_text(
+        original.replace("robbing a store", "robbing the store", 1),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    with pytest.raises(ContractError, match="hash mismatch: cases.jsonl"):
+        load_verified_benchmark(root, "full")
+
+
+@pytest.mark.parametrize("name", ["labels.yaml", "ATTRIBUTION.md"])
+def test_runtime_rejects_tampered_support_file(tmp_path: Path, name: str) -> None:
+    root = copy_benchmark(tmp_path)
+    path = root / name
+    path.write_bytes(path.read_bytes() + b"\n")
+
+    with pytest.raises(ContractError, match=f"hash mismatch: {name}"):
+        load_verified_benchmark(root, "full")
+
+
+def test_runtime_rejects_wrong_manifest_counts(tmp_path: Path) -> None:
+    root = copy_benchmark(tmp_path)
+    manifest_path = root / "manifest.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    manifest_path.write_text(
+        manifest.replace("full_cases: 90", "full_cases: 89", 1),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    with pytest.raises(ContractError, match="full_cases must be 90"):
+        load_verified_benchmark(root, "full")
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        ('contract_version: "1.0"', 'contract_version: "2.0"', "contract_version"),
+        ("task_id: 2", "task_id: 1", "task_id"),
+        ("benchmark_version: v1", "benchmark_version: v2", "benchmark_version"),
+    ],
+)
+def test_runtime_rejects_wrong_task_or_version(
+    tmp_path: Path, old: str, new: str, message: str
+) -> None:
+    root = copy_benchmark(tmp_path)
+    manifest_path = root / "manifest.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    manifest_path.write_text(
+        manifest.replace(old, new, 1),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    with pytest.raises(ContractError, match=message):
+        load_verified_benchmark(root, "full")
+
+
+def test_runtime_rejects_wrong_manifest_file_list(tmp_path: Path) -> None:
+    root = copy_benchmark(tmp_path)
+    manifest_path = root / "manifest.yaml"
+    manifest = manifest_path.read_text(encoding="utf-8")
+    manifest_path.write_text(
+        manifest.replace("path: ATTRIBUTION.md", "path: unexpected.md", 1),
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    with pytest.raises(ContractError, match="file list"):
+        load_verified_benchmark(root, "full")
 
 
 def test_duplicate_case_id_is_rejected_before_inventory_check(tmp_path: Path) -> None:

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -11,6 +13,8 @@ from security_eval.modules.task2.deepteam_adapter import (
     EVALUATION_GUIDELINES,
     VULNERABILITY_IMPORTS,
     DeepTeamAdapter,
+    _configure_deepteam_privacy,
+    _load_api,
 )
 from security_eval.modules.task2.models import TASK2_CATEGORIES, Task2Case
 
@@ -75,6 +79,48 @@ def test_public_vulnerability_mapping_covers_exact_task_categories() -> None:
     assert set(EVALUATION_GUIDELINES) == set(TASK2_CATEGORIES)
     assert set(EVALUATION_EXAMPLES) == set(TASK2_CATEGORIES)
     assert all(len(EVALUATION_EXAMPLES[category]) >= 2 for category in TASK2_CATEGORIES)
+
+
+def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
+    monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
+    monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
+
+    _configure_deepteam_privacy()
+
+    assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
+    assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
+
+
+def test_adapter_constructor_forces_telemetry_opt_out(monkeypatch) -> None:
+    monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
+    monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
+
+    DeepTeamAdapter(api_loader=fake_api, simulator_model="judge-model")
+
+    assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
+    assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
+
+
+def test_load_api_sets_privacy_before_first_third_party_import(monkeypatch) -> None:
+    monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
+    monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
+    original_import = builtins.__import__
+    attempted: list[str] = []
+
+    def guarded_import(name, *args, **kwargs):
+        if name.startswith(("deepteam", "deepeval")):
+            attempted.append(name)
+            assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
+            assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
+            raise ModuleNotFoundError(name)
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
+    with pytest.raises(ModuleNotFoundError):
+        _load_api()
+
+    assert attempted
 
 
 @pytest.mark.parametrize(("profile", "per_category"), [("quick", 1), ("full", 3)])
