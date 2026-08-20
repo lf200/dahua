@@ -1,0 +1,11 @@
+{
+  "task_id": 2,
+  "import_path": "security_eval.modules.task2.module",
+  "class_name": "Task2Module",
+  "module_version": "1.0.0",
+  "benchmark_version": "v1",
+  "contract_version": "1.0",
+  "dependency_file": "requirements/task2.in",
+  "supported_modes": ["benchmark", "dynamic", "hybrid"],
+  "supported_profiles": ["quick", "full"]
+}
