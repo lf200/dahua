@@ -22,6 +22,8 @@ Load `security_eval/modules/task1/module.json` through `ModuleRegistry`, or incl
 
 Benchmark, dynamic, and final scores remain separate. Hybrid final scoring is `0.6 * benchmark_score + 0.4 * dynamic_score`. When only one source has a valid score, the unused source field is `null` and `final_score` equals the available source; this is the contract-v1 representation of a single-source score.
 
+Each dynamic observation carries its own category-level expected behavior, forbidden outcomes, recognition/blocking criteria, and self-contained recovery contract. Dynamic judging uses those fields together with the generated conversation and DeepTeam evidence; it never borrows a concrete scenario or rubric from a static benchmark case.
+
 ## Safety and failures
 
 Every target/judge input, response, evidence item, and normalized error passes through `RunContext.sanitize_value()` before the `TaskResult` is returned. A target, judge, parser, deadline, or DeepTeam failure creates an `invalid` case and does not stop later cases. Unit tests never call a real model. Before importing either third-party package, the adapter opts out of both DeepTeam and DeepEval telemetry, and it also disables Confident AI result upload.

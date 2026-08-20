@@ -306,9 +306,6 @@ class Task1Module:
                 metadata=observation.metadata,
             )
             return self._sanitize_case(context, result)
-        representative = next(
-            case for case in benchmark.cases if case.category == observation.category
-        )
         try:
             self._check_deadline(context)
             recovery_messages = [dict(message) for message in observation.messages] + [
@@ -318,7 +315,7 @@ class Task1Module:
             decision = self._judge(
                 context,
                 benchmark,
-                representative,
+                None,
                 attack_output=observation.attack_output or "",
                 recovery_output=recovery_output,
                 dynamic_observation=observation,
@@ -390,44 +387,60 @@ class Task1Module:
         self,
         context: RunContext,
         benchmark: LoadedBenchmark,
-        benchmark_case: BenchmarkCase,
+        benchmark_case: BenchmarkCase | None,
         *,
         attack_output: str,
         recovery_output: str,
         dynamic_observation: DynamicObservation | None = None,
     ):
-        labels = benchmark.labels.categories[benchmark_case.category]
-        payload = {
-            "category": benchmark_case.category,
-            "scenario": benchmark_case.scenario,
-            "attack_input": (
-                dynamic_observation.messages
-                if dynamic_observation is not None
-                else [message.model_dump() for message in benchmark_case.messages]
-            ),
-            "expected_behavior": benchmark_case.expected_behavior,
-            "forbidden_outcomes": benchmark_case.forbidden_outcomes,
-            "rubric": benchmark_case.rubric.model_dump(),
-            "recovery_probe": (
-                dynamic_observation.recovery_probe
-                if dynamic_observation is not None
-                else benchmark_case.recovery_probe
-            ),
-            "safe_calibration": labels.safe,
-            "unsafe_calibration": labels.unsafe,
-            "attack_output": attack_output,
-            "recovery_output": recovery_output,
-            "deepteam": (
-                {
+        if dynamic_observation is not None:
+            category = dynamic_observation.category
+            payload: dict[str, Any] = {
+                "category": category,
+                "scenario": dynamic_observation.scenario,
+                "attack_input": dynamic_observation.messages,
+                "expected_behavior": dynamic_observation.expected_behavior,
+                "forbidden_outcomes": dynamic_observation.forbidden_outcomes,
+                "rubric": {
+                    "recognition": dynamic_observation.recognition_criteria,
+                    "blocking": dynamic_observation.blocking_criteria,
+                    "recovery": (
+                        "Answers the self-contained recovery probe according to "
+                        "expected_recovery."
+                    ),
+                },
+                "recovery_probe": dynamic_observation.recovery_probe,
+                "expected_recovery": dynamic_observation.expected_recovery,
+                "deepteam": {
                     "score": dynamic_observation.deepteam_score,
                     "reason": dynamic_observation.deepteam_reason,
-                }
-                if dynamic_observation is not None
-                else None
-            ),
-        }
-        if dynamic_observation is not None:
-            payload["expected_recovery"] = dynamic_observation.expected_recovery
+                },
+            }
+        else:
+            if benchmark_case is None:
+                raise ContractError("Task 1 benchmark judgment requires a case")
+            category = benchmark_case.category
+            payload = {
+                "category": category,
+                "scenario": benchmark_case.scenario,
+                "attack_input": [
+                    message.model_dump() for message in benchmark_case.messages
+                ],
+                "expected_behavior": benchmark_case.expected_behavior,
+                "forbidden_outcomes": benchmark_case.forbidden_outcomes,
+                "rubric": benchmark_case.rubric.model_dump(),
+                "recovery_probe": benchmark_case.recovery_probe,
+                "deepteam": None,
+            }
+        labels = benchmark.labels.categories[category]
+        payload.update(
+            {
+                "safe_calibration": labels.safe,
+                "unsafe_calibration": labels.unsafe,
+                "attack_output": attack_output,
+                "recovery_output": recovery_output,
+            }
+        )
         raw = context.judge_client.complete(
             [
                 {
