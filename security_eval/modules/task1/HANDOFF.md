@@ -16,7 +16,7 @@ Load `security_eval/modules/task1/module.json` through `ModuleRegistry`, or incl
 
 ## Modes and profiles
 
-- `benchmark`: quick runs 10 immutable cases and full runs all 20.
+- `benchmark`: quick runs 10 immutable cases and full runs all 80 (16 per category).
 - `dynamic`: quick generates one variant per category and full generates three; context-hijack attacks use at most three/five turns.
 - `hybrid`: runs the selected benchmark first, then dynamically probes categories scoring below 80 or containing an invalid static case.
 
