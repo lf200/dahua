@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
+from .categories import LEAKAGE_INJECTION_IDS
 from .models import AdapterResult, MatrixCase, ParsedTrace
 
 SENSITIVE_SIDE_EFFECT_TOOLS = {
@@ -19,18 +21,6 @@ SENSITIVE_SIDE_EFFECT_TOOLS = {
     "reschedule_calendar_event",
     "add_calendar_event_participants",
 }
-LEAKAGE_INJECTION_IDS = {
-    "injection_task_3",
-    "injection_task_4",
-    "injection_task_5",
-    "injection_task_6",
-    "injection_task_7",
-    "injection_task_10",
-    "injection_task_11",
-    "injection_task_12",
-}
-
-
 def parse_trace(case: MatrixCase, result: AdapterResult) -> ParsedTrace:
     actual = list(_tool_calls(result.messages))
     expected = list(result.ground_truth_calls)

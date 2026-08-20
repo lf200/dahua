@@ -15,6 +15,40 @@ from security_eval.errors import DependencyError, EvaluationTimeoutError, Target
 from .models import AdapterResult, MatrixCase
 
 EXPECTED_AGENTDOJO_VERSION = "0.1.35"
+SUPPORTED_ATTACK_MODEL_NAMES = (
+    "gpt-4o-2024-05-13",
+    "gpt-4o-mini-2024-07-18",
+    "gpt-4-0125-preview",
+    "gpt-3.5-turbo-0125",
+    "gpt-4-turbo-2024-04-09",
+    "claude-3-opus-20240229",
+    "claude-3-sonnet-20240229",
+    "claude-3-5-sonnet-20240620",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-7-sonnet-20250219-thinking-16000",
+    "claude-3-7-sonnet-20250219",
+    "claude-3-haiku-20240307",
+    "command-r-plus",
+    "command-r",
+    "mistralai/Mixtral-8x7B-Instruct-v0.1",
+    "meta-llama/Llama-3-70b-chat-hf",
+    "gemini-1.5-pro-002",
+    "gemini-1.5-pro-001",
+    "gemini-1.5-flash-002",
+    "gemini-1.5-flash-001",
+    "gemini-2.0-flash-exp",
+    "gemini-2.0-flash-001",
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-preview-05-06",
+    "local",
+    "vllm_parsed",
+)
+ATTACK_MODEL_ALIASES = {
+    "gpt-4o": "gpt-4o-2024-05-13",
+    "gpt-4o-mini": "gpt-4o-mini-2024-07-18",
+    "gpt-4-turbo": "gpt-4-turbo-2024-04-09",
+    "gpt-3.5-turbo": "gpt-3.5-turbo-0125",
+}
 
 
 class AgentDojoAdapter:
@@ -35,8 +69,10 @@ class AgentDojoAdapter:
         for attribute in ("base_url", "api_key"):
             if not getattr(target, attribute, None):
                 raise DependencyError(f"Target client does not expose {attribute} for AgentDojo")
-        if not getattr(context.settings, "agentdojo_model", None):
+        model = getattr(context.settings, "agentdojo_model", None)
+        if not model:
             raise DependencyError("AgentDojo model is not configured")
+        resolve_attack_model_name(model)
 
     def available_task_ids(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
         suite = self._suite()
@@ -119,7 +155,10 @@ class AgentDojoAdapter:
     @staticmethod
     def _pipeline(context: RunContext, defense: str):
         import openai
-        from agentdojo.agent_pipeline.agent_pipeline import AgentPipeline, PipelineConfig
+        from agentdojo.agent_pipeline.agent_pipeline import (
+            AgentPipeline,
+            PipelineConfig,
+        )
         from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM
 
         target = context.target_client
@@ -134,7 +173,9 @@ class AgentDojoAdapter:
         )
         model = context.settings.agentdojo_model
         llm = OpenAILLM(client, model)
-        llm.name = model
+        # Keep the real API model ID on OpenAILLM, but give AgentDojo a
+        # separately normalized pipeline name for its attack templates.
+        llm.name = resolve_attack_model_name(model)
         return AgentPipeline.from_config(
             PipelineConfig(
                 llm=llm,
@@ -183,6 +224,22 @@ def _normalized_security(case: MatrixCase, utility: bool, injection_goal_complet
     return not injection_goal_completed
 
 
+def resolve_attack_model_name(model_id: str) -> str:
+    """Resolve an API model ID to a name AgentDojo 0.1.35 can recognize."""
+
+    normalized = model_id.strip()
+    if normalized in ATTACK_MODEL_ALIASES:
+        return ATTACK_MODEL_ALIASES[normalized]
+    for supported in SUPPORTED_ATTACK_MODEL_NAMES:
+        if supported in normalized:
+            return supported
+    aliases = ", ".join(sorted(ATTACK_MODEL_ALIASES))
+    raise DependencyError(
+        "AgentDojo cannot identify the configured model for attack templates; "
+        f"use a supported snapshot name or one of these aliases: {aliases}"
+    )
+
+
 def _environment_diff(before: Any, after: Any) -> dict[str, Any]:
     """Summarize changed paths without persisting workspace content."""
 
@@ -193,9 +250,7 @@ def _environment_diff(before: Any, after: Any) -> dict[str, Any]:
     raw = DeepDiff(before_data, after_data, ignore_order=True).to_dict()
     summary: dict[str, Any] = {}
     for change_type, changes in raw.items():
-        if isinstance(changes, dict):
-            paths = sorted(str(path) for path in changes)
-        elif isinstance(changes, (set, list, tuple)):
+        if isinstance(changes, (dict, set, list, tuple)):
             paths = sorted(str(path) for path in changes)
         else:
             paths = [str(changes)]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
+from collections.abc import Iterable
 
 from security_eval.contracts import CaseResult, CategorySummary, RiskLevel
 

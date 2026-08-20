@@ -1,14 +1,23 @@
 from __future__ import annotations
 
+import pytest
+
 from security_eval.contracts import CaseResult
-from security_eval.modules.task4.agentdojo_adapter import _normalized_security
+from security_eval.errors import DependencyError
+from security_eval.modules.task4.agentdojo_adapter import (
+    _normalized_security,
+    resolve_attack_model_name,
+)
 from security_eval.modules.task4.models import AdapterResult, MatrixCase
 from security_eval.modules.task4.scoring import (
     aggregate_security_score,
     attach_defense_utility_loss,
     score_trace,
 )
-from security_eval.modules.task4.trace_parser import parse_trace, sanitized_trace_payload
+from security_eval.modules.task4.trace_parser import (
+    parse_trace,
+    sanitized_trace_payload,
+)
 
 
 def make_case(**overrides):
@@ -59,6 +68,16 @@ def test_agentdojo_raw_injection_boolean_is_normalized() -> None:
     assert _normalized_security(attack, utility=True, injection_goal_completed=False) is True
     assert _normalized_security(baseline, utility=False, injection_goal_completed=False) is True
     assert _normalized_security(dos, utility=False, injection_goal_completed=False) is False
+
+
+def test_agentdojo_attack_model_name_supports_alias_and_snapshot() -> None:
+    assert resolve_attack_model_name("gpt-4o-mini") == "gpt-4o-mini-2024-07-18"
+    assert resolve_attack_model_name("gpt-4o-mini-2024-07-18") == "gpt-4o-mini-2024-07-18"
+
+
+def test_agentdojo_attack_model_name_rejects_unknown_custom_model() -> None:
+    with pytest.raises(DependencyError, match="cannot identify"):
+        resolve_attack_model_name("company/custom-agent-model")
 
 
 def test_dos_interruption_and_safe_trace_directions() -> None:

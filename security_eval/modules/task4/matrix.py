@@ -2,29 +2,52 @@
 
 from __future__ import annotations
 
+import hashlib
 import random
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import yaml
 from pydantic import ValidationError
 
 from security_eval.errors import ContractError
 
-from .models import MatrixCase, MatrixConfig
+from .categories import dynamic_category
+from .models import MatrixCase, MatrixConfig, Task4BenchmarkManifest
 
 DEFAULT_MATRIX_PATH = Path(__file__).resolve().parents[3] / "benchmarks" / "v1" / "task4" / "matrix.yaml"
+DEFAULT_MANIFEST_PATH = DEFAULT_MATRIX_PATH.with_name("manifest.yaml")
 
 
-def load_matrix(path: Path = DEFAULT_MATRIX_PATH) -> MatrixConfig:
+def load_matrix(path: Path = DEFAULT_MATRIX_PATH, *, manifest_path: Path | None = None) -> MatrixConfig:
+    """Load the frozen matrix only after validating its task manifest and hash."""
+
+    manifest_path = manifest_path or path.with_name("manifest.yaml")
     try:
-        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-        return MatrixConfig.model_validate(raw)
+        matrix_bytes = path.read_bytes()
+        raw = yaml.safe_load(matrix_bytes.decode("utf-8"))
+        matrix = MatrixConfig.model_validate(raw)
+        manifest_raw = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        manifest = Task4BenchmarkManifest.model_validate(manifest_raw)
     except FileNotFoundError as exc:
-        raise ContractError(f"Task 4 matrix not found: {path}") from exc
-    except (OSError, yaml.YAMLError, ValidationError) as exc:
-        raise ContractError("Task 4 benchmark matrix is invalid") from exc
+        raise ContractError(f"Task 4 benchmark file not found: {exc.filename}") from exc
+    except (OSError, UnicodeDecodeError, yaml.YAMLError, ValidationError) as exc:
+        raise ContractError("Task 4 benchmark matrix or manifest is invalid") from exc
+
+    entry = manifest.files[0]
+    matrix_file = (manifest_path.parent / entry.path).resolve()
+    if matrix_file != path.resolve():
+        raise ContractError("Task 4 manifest does not reference the selected matrix")
+    if matrix.benchmark_version != manifest.benchmark_version:
+        raise ContractError("Task 4 matrix and manifest benchmark versions differ")
+    quick_count = sum(case.quick for case in matrix.cases)
+    if quick_count != manifest.quick_cases or len(matrix.cases) != manifest.full_cases:
+        raise ContractError("Task 4 matrix case counts do not match the manifest")
+    digest = hashlib.sha256(matrix_bytes).hexdigest()
+    if digest != entry.sha256:
+        raise ContractError("Task 4 benchmark matrix SHA-256 mismatch")
+    return matrix
 
 
 def benchmark_cases(matrix: MatrixConfig, profile: str) -> list[MatrixCase]:
@@ -55,15 +78,16 @@ def select_dynamic_cases(
     candidates: list[tuple[str, str, str, str]] = []
     for user in users:
         for injection in injections:
-            category = _dynamic_category(user, injection)
+            category = dynamic_category(user, injection)
             if allowed_categories and category not in allowed_categories:
                 continue
             for attack in ("important_instructions", "tool_knowledge"):
                 if (user, injection, attack) not in fixed_pairs:
                     candidates.append((user, injection, attack, category))
-        if not allowed_categories or "dos" in allowed_categories:
-            if (user, "injection_task_0", "dos") not in fixed_pairs:
-                candidates.append((user, "injection_task_0", "dos", "dos"))
+        if (
+            not allowed_categories or "dos" in allowed_categories
+        ) and (user, "injection_task_0", "dos") not in fixed_pairs:
+            candidates.append((user, "injection_task_0", "dos", "dos"))
 
     pair_limit = matrix.dynamic_limits[profile] // 2
     rng = random.Random(seed)
@@ -100,15 +124,3 @@ def select_dynamic_cases(
                 )
             )
     return cases
-
-
-def _dynamic_category(user_task_id: str, injection_task_id: str) -> str:
-    injection_number = int(injection_task_id.rsplit("_", 1)[1])
-    user_number = int(user_task_id.rsplit("_", 1)[1])
-    if injection_number in {4, 5, 6, 7, 10, 11, 12}:
-        return "context_leakage"
-    if injection_number in {1, 8, 9}:
-        return "privilege_escalation"
-    if user_number in {13, 18, 20, 21, 25, 32, 33, 34}:
-        return "multi_step_hijack"
-    return "api_abuse"

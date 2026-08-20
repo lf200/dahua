@@ -6,7 +6,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from security_eval.contracts import ModuleRequest
-from security_eval.errors import ContractError
+from security_eval.errors import ContractError, DependencyError
+from security_eval.modules.task4.agentdojo_adapter import AgentDojoAdapter
 from security_eval.modules.task4.models import AdapterResult
 from security_eval.modules.task4.module import Task4Module
 
@@ -70,6 +71,16 @@ def test_unknown_benchmark_version_is_rejected(run_context) -> None:
         module.estimate(unsupported)
     with pytest.raises(ContractError, match="supports benchmark version v1"):
         module.run(run_context, unsupported)
+
+
+def test_adapter_validate_rejects_unknown_model_before_cases(monkeypatch, run_context) -> None:
+    monkeypatch.setattr("importlib.metadata.version", lambda _: "0.1.35")
+    monkeypatch.setattr("importlib.import_module", lambda _: object())
+    bad_context = run_context.model_copy(
+        update={"settings": type("Settings", (), {"agentdojo_model": "company/custom-model"})()}
+    )
+    with pytest.raises(DependencyError, match="cannot identify"):
+        AgentDojoAdapter().validate(bad_context)
 
 
 def test_benchmark_quick_returns_contract_and_sanitized_artifacts(run_context) -> None:

@@ -25,7 +25,7 @@ class MatrixCase(PrivateModel):
     quick: bool = False
 
     @model_validator(mode="after")
-    def attack_shape_is_consistent(self) -> "MatrixCase":
+    def attack_shape_is_consistent(self) -> MatrixCase:
         if self.attack == "none" and self.injection_task_id is not None:
             raise ValueError("baseline cases cannot specify an injection task")
         if self.attack != "none" and self.injection_task_id is None:
@@ -43,7 +43,7 @@ class MatrixConfig(PrivateModel):
     cases: tuple[MatrixCase, ...]
 
     @model_validator(mode="after")
-    def case_ids_and_counts_are_valid(self) -> "MatrixConfig":
+    def case_ids_and_counts_are_valid(self) -> MatrixConfig:
         ids = [case.case_id for case in self.cases]
         if len(ids) != len(set(ids)):
             raise ValueError("matrix case IDs must be unique")
@@ -53,6 +53,27 @@ class MatrixConfig(PrivateModel):
             raise ValueError("quick task 4 matrix must contain 16 cases")
         if self.dynamic_limits != {"quick": 12, "full": 36}:
             raise ValueError("dynamic limits must be quick=12 and full=36")
+        return self
+
+
+class BenchmarkFileEntry(PrivateModel):
+    path: Literal["matrix.yaml"] = "matrix.yaml"
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    cases: Literal[48] = 48
+
+
+class Task4BenchmarkManifest(PrivateModel):
+    contract_version: Literal["1.0"] = "1.0"
+    task_id: Literal[4] = 4
+    benchmark_version: Literal["v1"] = "v1"
+    quick_cases: Literal[16] = 16
+    full_cases: Literal[48] = 48
+    files: tuple[BenchmarkFileEntry, ...]
+
+    @model_validator(mode="after")
+    def contains_only_matrix(self) -> Task4BenchmarkManifest:
+        if len(self.files) != 1:
+            raise ValueError("task 4 manifest must contain exactly matrix.yaml")
         return self
 
 

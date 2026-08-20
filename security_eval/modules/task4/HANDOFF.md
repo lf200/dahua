@@ -6,7 +6,7 @@ This package owns the AgentDojo application-security evaluation for task 4. It o
 
 Use Python 3.11 and install the shared requirements plus `requirements/task4.in`. The module manifest is `security_eval/modules/task4/module.json`; add that path to `MODULE_MANIFEST_PATHS` or let `ModuleRegistry.discover()` scan `security_eval/modules`.
 
-Real runs require an OpenAI-compatible endpoint with native chat tool-calling support. `TARGET_BASE_URL` and `TARGET_API_KEY` are taken from the shared target client, while `AGENTDOJO_MODEL` selects the model passed to AgentDojo.
+Real runs require an OpenAI-compatible endpoint with native chat tool-calling support. `TARGET_BASE_URL` and `TARGET_API_KEY` are taken from the shared target client, while `AGENTDOJO_MODEL` selects the API model. AgentDojo 0.1.35 must also recognize the model family used by its attack templates. The common aliases `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, and `gpt-3.5-turbo` are mapped to AgentDojo's known snapshots; exact supported snapshot names are accepted directly. Unknown custom model IDs are rejected by `validate()` before any case starts.
 
 ## Benchmark and modes
 

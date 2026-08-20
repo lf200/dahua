@@ -27,8 +27,13 @@ from security_eval.errors import (
 )
 
 from .agentdojo_adapter import AgentDojoAdapter
-from .matrix import DEFAULT_MATRIX_PATH, benchmark_cases, load_matrix, select_dynamic_cases
-from .models import AdapterResult, MatrixCase, MatrixConfig
+from .matrix import (
+    DEFAULT_MATRIX_PATH,
+    benchmark_cases,
+    load_matrix,
+    select_dynamic_cases,
+)
+from .models import AdapterResult, MatrixCase
 from .scoring import (
     aggregate_security_score,
     attach_defense_utility_loss,
@@ -77,11 +82,11 @@ class Task4Module:
         issues: list[Issue] = []
         try:
             load_matrix(self._matrix_path)
-        except Exception as exc:
+        except ContractError as exc:
             issues.append(Issue(severity="error", code="MATRIX_INVALID", message=str(exc)))
         try:
             self._adapter.validate(context)
-        except Exception as exc:
+        except EvaluationError as exc:
             error = normalize_exception(exc, context.sanitize_value)
             issues.append(Issue(severity="error", code=error.code, message=error.message))
         task_dir = (context.artifact_dir / "task_4").resolve()
@@ -230,7 +235,7 @@ class Task4Module:
                         },
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - every case must be isolated
                 if not isinstance(exc, EvaluationError):
                     exc = CaseEvaluationError(
                         "Task 4 case execution failed",
