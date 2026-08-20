@@ -1,0 +1,3 @@
+cases.jsonl text eol=lf
+labels.yaml text eol=lf
+manifest.yaml text eol=lf

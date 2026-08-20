@@ -1,0 +1,11 @@
+{
+  "task_id": 1,
+  "import_path": "security_eval.modules.task1.module",
+  "class_name": "Task1Module",
+  "module_version": "1.0.0",
+  "benchmark_version": "v1",
+  "contract_version": "1.0",
+  "dependency_file": "requirements/task1.in",
+  "supported_modes": ["benchmark", "dynamic", "hybrid"],
+  "supported_profiles": ["quick", "full"]
+}
