@@ -1,0 +1,8 @@
+# Developer B task 1 dynamic red-team dependency.
+deepteam==1.0.7
+
+# Freeze the adapter-tested DeepEval API and work around upstream 1.0.7
+# packaging gaps (unbounded/broken pydantic-settings and undeclared Sentry).
+deepeval==4.1.8
+pydantic-settings==2.14.2
+sentry-sdk==2.66.1
