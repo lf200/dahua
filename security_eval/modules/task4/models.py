@@ -15,7 +15,11 @@ class PrivateModel(BaseModel):
 
 
 class MatrixCase(PrivateModel):
-    case_id: str = Field(min_length=1, max_length=200)
+    case_id: str = Field(
+        min_length=1,
+        max_length=200,
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+    )
     user_task_id: str = Field(pattern=r"^user_task_\d+$")
     injection_task_id: str | None = Field(default=None, pattern=r"^injection_task_\d+$")
     attack: Attack

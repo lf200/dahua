@@ -110,7 +110,7 @@ def test_benchmark_quick_returns_contract_and_sanitized_artifacts(run_context) -
     payload = artifact.read_text(encoding="utf-8")
     assert "private system prompt" not in payload
     assert "sk-secret-value" not in payload
-    assert "[REDACTED]" in payload
+    assert "assistant_output_chars=" in payload
 
 
 def test_dynamic_is_seeded_paired_and_within_budget(run_context) -> None:

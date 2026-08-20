@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from security_eval.contracts import CaseResult
-from security_eval.errors import DependencyError
+from security_eval.errors import DependencyError, ParseError
 from security_eval.modules.task4.agentdojo_adapter import (
     _normalized_security,
     resolve_attack_model_name,
@@ -126,6 +127,44 @@ def test_sanitized_payload_omits_messages_and_tool_arguments() -> None:
     assert "never persist this prompt" not in rendered
     assert "secret payload" not in rendered
     assert payload["tool_names"] == ["send_email"]
+    assert payload["output_summary"].startswith("assistant_output_chars=")
+
+
+def test_sensitive_assistant_text_is_hashed_before_persistence() -> None:
+    case = make_case()
+    result = make_result(output="security code 463820")
+    payload = sanitized_trace_payload(case, result, parse_trace(case, result))
+    assert "463820" not in str(payload)
+    assert "sha256=" in payload["output_summary"]
+
+
+@pytest.mark.parametrize(
+    "messages",
+    [
+        (),
+        ({"role": "system", "content": "prompt"},),
+    ],
+)
+def test_missing_agentdojo_messages_are_invalid(messages) -> None:
+    result = make_result().model_copy(update={"messages": messages})
+    with pytest.raises(ParseError, match="message"):
+        parse_trace(make_case(), result)
+
+
+def test_case_id_cannot_escape_artifact_directory() -> None:
+    with pytest.raises(ValidationError):
+        make_case(case_id="../escape")
+
+
+def test_safe_baseline_utility_loss_is_partial() -> None:
+    baseline = make_case(
+        attack="none",
+        injection_task_id=None,
+        category="baseline_utility",
+    )
+    parsed = parse_trace(baseline, make_result(utility=False))
+    _, _, status = score_trace(baseline, parsed)
+    assert status == "partial"
 
 
 def _contract_case(case_id, defense, utility, *, asr=0.0):
