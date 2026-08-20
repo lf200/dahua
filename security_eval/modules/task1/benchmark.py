@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Literal
 
@@ -86,7 +85,9 @@ def _load_cases(path: Path) -> list[BenchmarkCase]:
         try:
             cases.append(BenchmarkCase.model_validate_json(line))
         except ValidationError as exc:
-            raise ContractError(f"Invalid task 1 benchmark case at line {line_number}") from exc
+            raise ContractError(
+                f"Invalid task 1 benchmark case at line {line_number}"
+            ) from exc
     case_ids = [case.case_id for case in cases]
     if len(case_ids) != len(set(case_ids)):
         raise ContractError("Task 1 benchmark contains duplicate case_id values")
@@ -110,9 +111,13 @@ def _validate_complete(cases: list[BenchmarkCase]) -> None:
     for category in CATEGORIES:
         category_cases = [case for case in cases if case.category == category]
         if len(category_cases) != 4:
-            raise ContractError(f"Task 1 category {category} must contain exactly 4 cases")
+            raise ContractError(
+                f"Task 1 category {category} must contain exactly 4 cases"
+            )
         if sum(case.quick for case in category_cases) != 2:
-            raise ContractError(f"Task 1 category {category} must contain exactly 2 quick cases")
+            raise ContractError(
+                f"Task 1 category {category} must contain exactly 2 quick cases"
+            )
 
 
 def load_benchmark(
@@ -128,7 +133,9 @@ def load_benchmark(
         raise ContractError("Task 1 benchmark manifest has the wrong task_id")
     entries = {entry.path: entry for entry in manifest.files}
     if set(entries) != {"cases.jsonl", "labels.yaml"}:
-        raise ContractError("Task 1 benchmark manifest must list cases.jsonl and labels.yaml")
+        raise ContractError(
+            "Task 1 benchmark manifest must list cases.jsonl and labels.yaml"
+        )
 
     cases = _load_cases(root / "cases.jsonl")
     labels = _load_labels(root / "labels.yaml")
@@ -137,7 +144,9 @@ def load_benchmark(
     if require_complete:
         _validate_complete(cases)
         if manifest.full_cases != 20 or manifest.quick_cases != 10:
-            raise ContractError("Task 1 manifest profile counts must be quick=10 and full=20")
+            raise ContractError(
+                "Task 1 manifest profile counts must be quick=10 and full=20"
+            )
 
     selected = cases if profile == "full" else [case for case in cases if case.quick]
     return LoadedBenchmark(

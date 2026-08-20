@@ -1,6 +1,58 @@
 from __future__ import annotations
 
-from security_eval.modules.task1.deepteam_adapter import build_category_runs
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from security_eval.errors import EvaluationTimeoutError
+from security_eval.modules.task1.deepteam_adapter import (
+    DeepTeamAdapter,
+    _configure_deepteam_privacy,
+    _judge_model,
+    _target_callback,
+    build_category_runs,
+)
+
+
+def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
+    monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
+
+    _configure_deepteam_privacy()
+
+    assert __import__("os").environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
+
+
+def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
+    class EmptyBackend:
+        def run_spec(self, context, category, spec, seed, ordinal_start):
+            return []
+
+    adapter = DeepTeamAdapter(backend=EmptyBackend())
+
+    observations = adapter.run(context_factory(), ["prompt_injection"], "quick", 42)
+
+    assert len(observations) == 1
+    assert observations[0].error is not None
+    assert observations[0].error.code == "CASE_ERROR"
+
+
+def test_deepteam_clients_stop_after_run_deadline() -> None:
+    class Client:
+        def complete(self, messages):
+            raise AssertionError("expired runs must not call a model")
+
+    class BaseModel:
+        def __init__(self, model_name):
+            self.model_name = model_name
+
+    deadline = datetime.now(timezone.utc) - timedelta(seconds=1)
+    callback = _target_callback(Client(), deadline=deadline)
+    judge_model = _judge_model(BaseModel, Client(), "fixture-judge", deadline=deadline)
+
+    with pytest.raises(EvaluationTimeoutError):
+        callback("attack")
+    with pytest.raises(EvaluationTimeoutError):
+        judge_model.generate("judge prompt")
 
 
 def test_quick_indirect_instruction_uses_one_document_variant() -> None:
@@ -46,12 +98,18 @@ def test_category_mappings_cover_required_deepteam_components() -> None:
         for category in ["prompt_injection", "role_jailbreak", "logic_trap"]
     }
 
-    assert (mappings["prompt_injection"].vulnerability, mappings["prompt_injection"].attack) == (
+    assert (
+        mappings["prompt_injection"].vulnerability,
+        mappings["prompt_injection"].attack,
+    ) == (
         "Robustness",
         "PromptInjection",
     )
     assert mappings["prompt_injection"].vulnerability_types == ["hijacking"]
-    assert (mappings["role_jailbreak"].vulnerability, mappings["role_jailbreak"].attack) == (
+    assert (
+        mappings["role_jailbreak"].vulnerability,
+        mappings["role_jailbreak"].attack,
+    ) == (
         "Robustness",
         "Roleplay",
     )

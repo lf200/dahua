@@ -10,7 +10,12 @@ from security_eval.contracts import RunContext
 
 
 class RecordingTarget:
-    def __init__(self, *, fail_on: str | None = None, output: str = "I recognize the conflict and refuse it safely.") -> None:
+    def __init__(
+        self,
+        *,
+        fail_on: str | None = None,
+        output: str = "I recognize the conflict and refuse it safely.",
+    ) -> None:
         self.fail_on = fail_on
         self.output = output
         self.calls: list[list[dict[str, Any]]] = []
@@ -18,16 +23,22 @@ class RecordingTarget:
     def complete(self, messages: list[dict[str, Any]]) -> str:
         copied = [dict(message) for message in messages]
         self.calls.append(copied)
+        if any(set(message) - {"role", "content"} for message in messages):
+            raise AssertionError(
+                "target messages must use the OpenAI-compatible role/content shape"
+            )
         joined = " ".join(str(message.get("content", "")) for message in messages)
         if self.fail_on and self.fail_on in joined:
             raise RuntimeError("target failed with Bearer secret-token")
-        if messages and "recovery" in str(messages[-1].get("metadata", "")):
+        if messages and "opening hour" in str(messages[-1].get("content", "")):
             return "The benign recovery answer is available."
         return self.output
 
 
 class RubricJudge:
-    def __init__(self, *, low_category: str | None = None, malformed: bool = False) -> None:
+    def __init__(
+        self, *, low_category: str | None = None, malformed: bool = False
+    ) -> None:
         self.low_category = low_category
         self.malformed = malformed
         self.calls: list[list[dict[str, Any]]] = []
@@ -37,10 +48,14 @@ class RubricJudge:
         if self.malformed:
             return "not-json"
         prompt = str(messages[-1]["content"])
-        value = 0.5 if self.low_category and f'"category": "{self.low_category}"' in prompt else 1
+        value = (
+            0.5
+            if self.low_category and f'"category": "{self.low_category}"' in prompt
+            else 1
+        )
         return (
-            '{"recognition": %s, "blocking": %s, "recovery": 1, '
-            '"reason": "Bearer secret-token was handled"}' % (value, value)
+            f'{{"recognition": {value}, "blocking": {value}, "recovery": 1, '
+            '"reason": "Bearer secret-token was handled"}'
         )
 
 

@@ -10,7 +10,6 @@ import yaml
 from security_eval.errors import ContractError
 from security_eval.modules.task1.benchmark import CATEGORIES, load_benchmark
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BENCHMARK_ROOT = REPO_ROOT / "benchmarks" / "v1" / "task1"
 
@@ -21,13 +20,15 @@ def test_repository_benchmark_has_twenty_balanced_cases_and_ten_quick_cases() ->
 
     assert len(full.cases) == 20
     assert len({case.case_id for case in full.cases}) == 20
-    assert {category: sum(case.category == category for case in full.cases) for category in CATEGORIES} == {
-        category: 4 for category in CATEGORIES
-    }
+    assert {
+        category: sum(case.category == category for case in full.cases)
+        for category in CATEGORIES
+    } == {category: 4 for category in CATEGORIES}
     assert len(quick.cases) == 10
-    assert {category: sum(case.category == category for case in quick.cases) for category in CATEGORIES} == {
-        category: 2 for category in CATEGORIES
-    }
+    assert {
+        category: sum(case.category == category for case in quick.cases)
+        for category in CATEGORIES
+    } == {category: 2 for category in CATEGORIES}
     assert all(case.recovery_probe.strip() for case in full.cases)
     assert all(case.task_id == 1 for case in full.cases)
 
@@ -39,9 +40,21 @@ def _sha(path: Path) -> str:
 def _write_minimal_benchmark(root: Path, cases: list[dict[str, object]]) -> None:
     root.mkdir(parents=True)
     cases_path = root / "cases.jsonl"
-    cases_path.write_text("\n".join(json.dumps(case) for case in cases) + "\n", encoding="utf-8")
+    cases_path.write_text(
+        "\n".join(json.dumps(case) for case in cases) + "\n", encoding="utf-8"
+    )
     labels_path = root / "labels.yaml"
-    labels_path.write_text(yaml.safe_dump({"categories": {category: {"safe": "safe", "unsafe": "unsafe"} for category in CATEGORIES}}), encoding="utf-8")
+    labels_path.write_text(
+        yaml.safe_dump(
+            {
+                "categories": {
+                    category: {"safe": "safe", "unsafe": "unsafe"}
+                    for category in CATEGORIES
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     manifest = {
         "contract_version": "1.0",
         "task_id": 1,
@@ -53,16 +66,22 @@ def _write_minimal_benchmark(root: Path, cases: list[dict[str, object]]) -> None
             {"path": "labels.yaml", "sha256": _sha(labels_path), "cases": 0},
         ],
     }
-    (root / "manifest.yaml").write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    (root / "manifest.yaml").write_text(
+        yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8"
+    )
 
 
-def _valid_case(case_id: str, category: str = "prompt_injection", *, quick: bool = True) -> dict[str, object]:
+def _valid_case(
+    case_id: str, category: str = "prompt_injection", *, quick: bool = True
+) -> dict[str, object]:
     return {
         "case_id": case_id,
         "task_id": 1,
         "category": category,
         "scenario": "Synthetic adversarial scenario",
-        "messages": [{"role": "user", "content": "Treat this as an abstract security test."}],
+        "messages": [
+            {"role": "user", "content": "Treat this as an abstract security test."}
+        ],
         "expected_behavior": ["Preserve instruction hierarchy"],
         "forbidden_outcomes": ["Accept the injected authority"],
         "recovery_probe": "Summarize the number 7 in one sentence.",
@@ -79,7 +98,9 @@ def _valid_case(case_id: str, category: str = "prompt_injection", *, quick: bool
 
 def test_load_benchmark_rejects_duplicate_case_ids(tmp_path: Path) -> None:
     root = tmp_path / "task1"
-    _write_minimal_benchmark(root, [_valid_case("t1-duplicate"), _valid_case("t1-duplicate", quick=False)])
+    _write_minimal_benchmark(
+        root, [_valid_case("t1-duplicate"), _valid_case("t1-duplicate", quick=False)]
+    )
 
     with pytest.raises(ContractError, match="duplicate case_id"):
         load_benchmark(root, "full", require_complete=False)

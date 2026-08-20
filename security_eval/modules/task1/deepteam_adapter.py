@@ -2,15 +2,28 @@
 
 from __future__ import annotations
 
+import os
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol, Sequence
+from datetime import datetime, timezone
+from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from security_eval.contracts import ErrorInfo, Profile, RunContext
-from security_eval.errors import DependencyError, normalize_exception
+from security_eval.errors import (
+    DependencyError,
+    EvaluationTimeoutError,
+    normalize_exception,
+)
 from security_eval.modules.task1.benchmark import Category
+
+
+def _configure_deepteam_privacy() -> None:
+    """Disable DeepTeam network telemetry before any third-party import."""
+
+    os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] = "YES"
 
 
 class DeepTeamRunSpec(BaseModel):
@@ -58,7 +71,10 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
         if profile == "quick":
             type_variations = [("document_embedded_instructions", 1)]
         else:
-            type_variations = [("document_embedded_instructions", 2), ("cross_context_injection", 1)]
+            type_variations = [
+                ("document_embedded_instructions", 2),
+                ("cross_context_injection", 1),
+            ]
         return [
             DeepTeamRunSpec(
                 vulnerability="IndirectInstruction",
@@ -116,6 +132,7 @@ class DeepTeamAdapter:
     """Run category-scoped DeepTeam probes without leaking third-party objects."""
 
     def __init__(self, backend: DeepTeamBackend | None = None) -> None:
+        _configure_deepteam_privacy()
         self._backend = backend or _DeepTeamBackend()
 
     def run(
@@ -131,8 +148,10 @@ class DeepTeamAdapter:
             for run_index, spec in enumerate(build_category_runs(category, profile)):
                 run_seed = seed + category_index * 100 + run_index
                 try:
-                    produced = self._backend.run_spec(context, category, spec, run_seed, ordinal)
-                except Exception as exc:
+                    produced = self._backend.run_spec(
+                        context, category, spec, run_seed, ordinal
+                    )
+                except Exception as exc:  # noqa: BLE001 - isolate arbitrary third-party failures
                     error = normalize_exception(exc, context.sanitize_value)
                     produced = [
                         DynamicObservation(
@@ -141,6 +160,20 @@ class DeepTeamAdapter:
                             scenario=f"DeepTeam {category} dynamic probe",
                             metadata={"seed": run_seed, "profile": profile},
                             error=error,
+                        )
+                    ]
+                if not produced:
+                    produced = [
+                        DynamicObservation(
+                            case_id=f"t1-dynamic-{category}-{ordinal:02d}",
+                            category=category,
+                            scenario=f"DeepTeam {category} dynamic probe",
+                            metadata={"seed": run_seed, "profile": profile},
+                            error=ErrorInfo(
+                                code="CASE_ERROR",
+                                message="DeepTeam returned no dynamic probe results",
+                                case_id=f"t1-dynamic-{category}-{ordinal:02d}",
+                            ),
                         )
                     ]
                 observations.extend(produced)
@@ -161,6 +194,7 @@ class _DeepTeamImports:
 
 
 def _load_deepteam() -> _DeepTeamImports:
+    _configure_deepteam_privacy()
     try:
         from deepeval.models import DeepEvalBaseLLM
         from deepteam.attacks.attack_engine import AttackEngine
@@ -169,7 +203,9 @@ def _load_deepteam() -> _DeepTeamImports:
         from deepteam.red_teamer import RedTeamer
         from deepteam.vulnerabilities import IndirectInstruction, Robustness
     except ImportError as exc:
-        raise DependencyError("DeepTeam 1.0.7 is required for task 1 dynamic mode") from exc
+        raise DependencyError(
+            "DeepTeam 1.0.7 is required for task 1 dynamic mode"
+        ) from exc
     return _DeepTeamImports(
         RedTeamer=RedTeamer,
         AttackEngine=AttackEngine,
@@ -182,7 +218,23 @@ def _load_deepteam() -> _DeepTeamImports:
     )
 
 
-def _judge_model(base_class: Any, client: Any, model_name: str) -> Any:
+def _check_deadline(deadline: datetime | None) -> None:
+    if deadline is None:
+        return
+    now = datetime.now(timezone.utc)
+    if deadline.tzinfo is None:
+        now = now.replace(tzinfo=None)
+    if now >= deadline:
+        raise EvaluationTimeoutError("Task 1 dynamic evaluation deadline exceeded")
+
+
+def _judge_model(
+    base_class: Any,
+    client: Any,
+    model_name: str,
+    *,
+    deadline: datetime | None = None,
+) -> Any:
     class ContextJudgeModel(base_class):
         def __init__(self) -> None:
             super().__init__(model_name)
@@ -191,6 +243,7 @@ def _judge_model(base_class: Any, client: Any, model_name: str) -> Any:
             return client
 
         def generate(self, prompt: str, schema: Any | None = None) -> Any:
+            _check_deadline(deadline)
             raw = client.complete([{"role": "user", "content": prompt}])
             if schema is not None:
                 return schema.model_validate_json(raw)
@@ -205,15 +258,20 @@ def _judge_model(base_class: Any, client: Any, model_name: str) -> Any:
     return ContextJudgeModel()
 
 
-def _target_callback(client: Any):
+def _target_callback(client: Any, *, deadline: datetime | None = None):
     def callback(input_text: str, turns: list[Any] | None = None) -> str:
+        _check_deadline(deadline)
         messages: list[dict[str, Any]] = []
         for turn in turns or []:
             role = str(getattr(turn, "role", "user"))
             content = str(getattr(turn, "content", ""))
             if role in {"user", "assistant", "system"} and content:
                 messages.append({"role": role, "content": content})
-        if not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != input_text:
+        if (
+            not messages
+            or messages[-1].get("role") != "user"
+            or messages[-1].get("content") != input_text
+        ):
             messages.append({"role": "user", "content": input_text})
         return client.complete(messages)
 
@@ -246,8 +304,15 @@ class _DeepTeamBackend:
         ordinal_start: int,
     ) -> list[DynamicObservation]:
         imported = _load_deepteam()
-        model_name = str(getattr(context.settings, "judge_model", "task1-context-judge"))
-        judge_model = _judge_model(imported.DeepEvalBaseLLM, context.judge_client, model_name)
+        model_name = str(
+            getattr(context.settings, "judge_model", "task1-context-judge")
+        )
+        judge_model = _judge_model(
+            imported.DeepEvalBaseLLM,
+            context.judge_client,
+            model_name,
+            deadline=context.deadline,
+        )
         attack_engine = imported.AttackEngine(
             simulator_model=judge_model,
             variations=spec.variations,
@@ -258,7 +323,9 @@ class _DeepTeamBackend:
             purpose="Evaluate resistance to adversarial instruction manipulation",
         )
         vulnerability_class = (
-            imported.IndirectInstruction if spec.vulnerability == "IndirectInstruction" else imported.Robustness
+            imported.IndirectInstruction
+            if spec.vulnerability == "IndirectInstruction"
+            else imported.Robustness
         )
         vulnerability = vulnerability_class(
             async_mode=False,
@@ -275,7 +342,9 @@ class _DeepTeamBackend:
             attack = imported.Roleplay()
         elif spec.attack == "LinearJailbreaking":
             turn_attacks = [
-                imported.Roleplay() if name == "Roleplay" else imported.PromptInjection()
+                imported.Roleplay()
+                if name == "Roleplay"
+                else imported.PromptInjection()
                 for name in spec.turn_level_attacks
             ]
             attack = imported.LinearJailbreaking(
@@ -298,7 +367,9 @@ class _DeepTeamBackend:
                 attack_engine=attack_engine,
             )
             assessment = red_teamer.red_team(
-                model_callback=_target_callback(context.target_client),
+                model_callback=_target_callback(
+                    context.target_client, deadline=context.deadline
+                ),
                 vulnerabilities=[vulnerability],
                 attacks=[attack],
                 attacks_per_vulnerability_type=1,
@@ -314,7 +385,11 @@ class _DeepTeamBackend:
         for offset, test_case in enumerate(assessment.test_cases):
             messages = _messages_from_test_case(test_case)
             output = next(
-                (message["content"] for message in reversed(messages) if message["role"] == "assistant"),
+                (
+                    message["content"]
+                    for message in reversed(messages)
+                    if message["role"] == "assistant"
+                ),
                 getattr(test_case, "actual_output", None),
             )
             error_text = getattr(test_case, "error", None)
@@ -327,7 +402,11 @@ class _DeepTeamBackend:
                     attack_input=getattr(test_case, "input", None),
                     attack_output=str(output) if output is not None else None,
                     attack_method=getattr(test_case, "attack_method", spec.attack),
-                    vulnerability_type=str(getattr(getattr(test_case, "vulnerability_type", None), "value", "")),
+                    vulnerability_type=str(
+                        getattr(
+                            getattr(test_case, "vulnerability_type", None), "value", ""
+                        )
+                    ),
                     deepteam_score=getattr(test_case, "score", None),
                     deepteam_reason=getattr(test_case, "reason", None),
                     metadata={
@@ -341,7 +420,11 @@ class _DeepTeamBackend:
                             code="CASE_ERROR",
                             message="DeepTeam could not evaluate the dynamic probe",
                             case_id=f"t1-dynamic-{category}-{ordinal_start + offset:02d}",
-                            details={"deepteam_error": str(context.sanitize_value(error_text))},
+                            details={
+                                "deepteam_error": str(
+                                    context.sanitize_value(error_text)
+                                )
+                            },
                         )
                         if error_text
                         else None
