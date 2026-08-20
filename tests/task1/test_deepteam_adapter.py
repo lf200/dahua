@@ -16,10 +16,12 @@ from security_eval.modules.task1.deepteam_adapter import (
 
 def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
     monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
+    monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
 
     _configure_deepteam_privacy()
 
     assert __import__("os").environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
+    assert __import__("os").environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
 
 
 def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:

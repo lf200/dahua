@@ -24,7 +24,7 @@ Benchmark, dynamic, and final scores remain separate. Hybrid final scoring is `0
 
 ## Safety and failures
 
-Every target/judge input, response, evidence item, and normalized error passes through `RunContext.sanitize_value()` before the `TaskResult` is returned. A target, judge, parser, deadline, or DeepTeam failure creates an `invalid` case and does not stop later cases. Unit tests never call a real model, and the adapter disables Confident AI result upload.
+Every target/judge input, response, evidence item, and normalized error passes through `RunContext.sanitize_value()` before the `TaskResult` is returned. A target, judge, parser, deadline, or DeepTeam failure creates an `invalid` case and does not stop later cases. Unit tests never call a real model. Before importing either third-party package, the adapter opts out of both DeepTeam and DeepEval telemetry, and it also disables Confident AI result upload.
 
 ## Fixture and verification
 

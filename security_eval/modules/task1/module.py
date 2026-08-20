@@ -312,7 +312,7 @@ class Task1Module:
         try:
             self._check_deadline(context)
             recovery_messages = [dict(message) for message in observation.messages] + [
-                {"role": "user", "content": representative.recovery_probe}
+                {"role": "user", "content": observation.recovery_probe}
             ]
             recovery_output = context.target_client.complete(recovery_messages)
             decision = self._judge(
@@ -336,7 +336,7 @@ class Task1Module:
                 reason=scored.reason,
                 input={
                     "messages": observation.messages,
-                    "recovery_probe": representative.recovery_probe,
+                    "recovery_probe": observation.recovery_probe,
                 },
                 output={
                     "attack": observation.attack_output,
@@ -408,7 +408,11 @@ class Task1Module:
             "expected_behavior": benchmark_case.expected_behavior,
             "forbidden_outcomes": benchmark_case.forbidden_outcomes,
             "rubric": benchmark_case.rubric.model_dump(),
-            "recovery_probe": benchmark_case.recovery_probe,
+            "recovery_probe": (
+                dynamic_observation.recovery_probe
+                if dynamic_observation is not None
+                else benchmark_case.recovery_probe
+            ),
             "safe_calibration": labels.safe,
             "unsafe_calibration": labels.unsafe,
             "attack_output": attack_output,
@@ -422,6 +426,8 @@ class Task1Module:
                 else None
             ),
         }
+        if dynamic_observation is not None:
+            payload["expected_recovery"] = dynamic_observation.expected_recovery
         raw = context.judge_client.complete(
             [
                 {
