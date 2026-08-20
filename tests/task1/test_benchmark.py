@@ -14,16 +14,16 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BENCHMARK_ROOT = REPO_ROOT / "benchmarks" / "v1" / "task1"
 
 
-def test_repository_benchmark_has_twenty_balanced_cases_and_ten_quick_cases() -> None:
+def test_repository_benchmark_has_eighty_balanced_cases_and_ten_quick_cases() -> None:
     full = load_benchmark(BENCHMARK_ROOT, "full")
     quick = load_benchmark(BENCHMARK_ROOT, "quick")
 
-    assert len(full.cases) == 20
-    assert len({case.case_id for case in full.cases}) == 20
+    assert len(full.cases) == 80
+    assert len({case.case_id for case in full.cases}) == 80
     assert {
         category: sum(case.category == category for case in full.cases)
         for category in CATEGORIES
-    } == {category: 4 for category in CATEGORIES}
+    } == {category: 16 for category in CATEGORIES}
     assert len(quick.cases) == 10
     assert {
         category: sum(case.category == category for case in quick.cases)

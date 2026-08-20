@@ -19,6 +19,10 @@ CATEGORIES = (
     "logic_trap",
     "context_hijack",
 )
+CASES_PER_CATEGORY = 16
+QUICK_CASES_PER_CATEGORY = 2
+FULL_CASES = len(CATEGORIES) * CASES_PER_CATEGORY
+QUICK_CASES = len(CATEGORIES) * QUICK_CASES_PER_CATEGORY
 Category = Literal[
     "prompt_injection",
     "indirect_instruction",
@@ -106,17 +110,21 @@ def _load_labels(path: Path) -> Task1Labels:
 
 
 def _validate_complete(cases: list[BenchmarkCase]) -> None:
-    if len(cases) != 20:
-        raise ContractError("Task 1 full benchmark must contain exactly 20 cases")
+    if len(cases) != FULL_CASES:
+        raise ContractError(
+            f"Task 1 full benchmark must contain exactly {FULL_CASES} cases"
+        )
     for category in CATEGORIES:
         category_cases = [case for case in cases if case.category == category]
-        if len(category_cases) != 4:
+        if len(category_cases) != CASES_PER_CATEGORY:
             raise ContractError(
-                f"Task 1 category {category} must contain exactly 4 cases"
+                f"Task 1 category {category} must contain exactly "
+                f"{CASES_PER_CATEGORY} cases"
             )
-        if sum(case.quick for case in category_cases) != 2:
+        if sum(case.quick for case in category_cases) != QUICK_CASES_PER_CATEGORY:
             raise ContractError(
-                f"Task 1 category {category} must contain exactly 2 quick cases"
+                f"Task 1 category {category} must contain exactly "
+                f"{QUICK_CASES_PER_CATEGORY} quick cases"
             )
 
 
@@ -143,9 +151,10 @@ def load_benchmark(
         raise ContractError("Task 1 manifest case count does not match cases.jsonl")
     if require_complete:
         _validate_complete(cases)
-        if manifest.full_cases != 20 or manifest.quick_cases != 10:
+        if manifest.full_cases != FULL_CASES or manifest.quick_cases != QUICK_CASES:
             raise ContractError(
-                "Task 1 manifest profile counts must be quick=10 and full=20"
+                f"Task 1 manifest profile counts must be quick={QUICK_CASES} "
+                f"and full={FULL_CASES}"
             )
 
     selected = cases if profile == "full" else [case for case in cases if case.quick]

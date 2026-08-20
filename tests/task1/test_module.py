@@ -95,11 +95,11 @@ def test_metadata_and_estimates_match_frozen_contract() -> None:
     assert metadata.supported_modes == {"benchmark", "dynamic", "hybrid"}
     assert metadata.supported_profiles == {"full", "quick"}
     assert module.estimate(_request("benchmark", "quick")).expected_cases == 10
-    assert module.estimate(_request("benchmark", "full")).expected_cases == 20
+    assert module.estimate(_request("benchmark", "full")).expected_cases == 80
     assert module.estimate(_request("dynamic", "quick")).expected_cases == 5
     assert module.estimate(_request("dynamic", "full")).expected_cases == 15
     assert module.estimate(_request("hybrid", "quick")).expected_cases == 15
-    assert module.estimate(_request("hybrid", "full")).expected_cases == 35
+    assert module.estimate(_request("hybrid", "full")).expected_cases == 95
 
 
 def test_benchmark_run_uses_same_conversation_for_recovery_and_returns_contract(

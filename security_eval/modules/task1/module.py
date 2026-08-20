@@ -28,6 +28,8 @@ from security_eval.errors import (
 )
 from security_eval.modules.task1.benchmark import (
     CATEGORIES,
+    FULL_CASES,
+    QUICK_CASES,
     BenchmarkCase,
     Category,
     LoadedBenchmark,
@@ -86,7 +88,7 @@ class Task1Module:
         )
 
     def estimate(self, request: ModuleRequest) -> Estimate:
-        benchmark_cases = 10 if request.profile == "quick" else 20
+        benchmark_cases = QUICK_CASES if request.profile == "quick" else FULL_CASES
         dynamic_cases = 5 if request.profile == "quick" else 15
         if request.mode == "benchmark":
             expected = benchmark_cases
