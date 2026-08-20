@@ -1,0 +1,8 @@
+# Shared core runtime dependencies owned by developer A.
+pydantic>=2.10,<3
+python-dotenv>=1.0,<2
+PyYAML>=6.0,<7
+jsonschema>=4.23,<5
+
+# Shared test dependency; real model calls remain opt-in smoke tests.
+pytest>=8.3,<10

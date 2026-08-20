@@ -1,0 +1,1 @@
+"""Contract-compatible test doubles."""

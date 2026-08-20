@@ -1,0 +1,1656 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.example/security-eval/contracts-v1.schema.json",
+  "title": "Security Evaluation Public Contracts v1",
+  "type": "object",
+  "$defs": {
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "model_output",
+            "judge_reason",
+            "tool_trace",
+            "environment_diff",
+            "recovery_probe",
+            "metric",
+            "error",
+            "artifact"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "data": {
+          "default": null,
+          "title": "Data"
+        },
+        "artifact_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Artifact Path"
+        },
+        "redacted": {
+          "default": true,
+          "title": "Redacted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "summary"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "ErrorInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "CONFIG_ERROR",
+            "DEPENDENCY_ERROR",
+            "TARGET_ERROR",
+            "TIMEOUT_ERROR",
+            "PARSE_ERROR",
+            "CASE_ERROR",
+            "CONTRACT_ERROR",
+            "INTERNAL_ERROR"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "default": false,
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "case_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Case Id"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorInfo",
+      "type": "object"
+    },
+    "Issue": {
+      "additionalProperties": false,
+      "properties": {
+        "severity": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "code": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "severity",
+        "code",
+        "message"
+      ],
+      "title": "Issue",
+      "type": "object"
+    },
+    "Estimate": {
+      "additionalProperties": false,
+      "properties": {
+        "task_id": {
+          "enum": [
+            1,
+            2,
+            4
+          ],
+          "title": "Task Id",
+          "type": "integer"
+        },
+        "expected_cases": {
+          "minimum": 0,
+          "title": "Expected Cases",
+          "type": "integer"
+        },
+        "estimated_seconds": {
+          "minimum": 0,
+          "title": "Estimated Seconds",
+          "type": "integer"
+        },
+        "notes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "task_id",
+        "expected_cases",
+        "estimated_seconds"
+      ],
+      "title": "Estimate",
+      "type": "object"
+    },
+    "ModuleMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "task_id": {
+          "enum": [
+            1,
+            2,
+            4
+          ],
+          "title": "Task Id",
+          "type": "integer"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "module_version": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Module Version",
+          "type": "string"
+        },
+        "benchmark_version": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Benchmark Version",
+          "type": "string"
+        },
+        "supported_modes": {
+          "items": {
+            "enum": [
+              "benchmark",
+              "dynamic",
+              "hybrid"
+            ],
+            "type": "string"
+          },
+          "title": "Supported Modes",
+          "type": "array",
+          "uniqueItems": true
+        },
+        "supported_profiles": {
+          "items": {
+            "enum": [
+              "quick",
+              "full"
+            ],
+            "type": "string"
+          },
+          "title": "Supported Profiles",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "task_id",
+        "name",
+        "module_version",
+        "benchmark_version",
+        "supported_modes",
+        "supported_profiles"
+      ],
+      "title": "ModuleMetadata",
+      "type": "object"
+    },
+    "RunRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "tasks": {
+          "items": {
+            "enum": [
+              1,
+              2,
+              4
+            ],
+            "type": "integer"
+          },
+          "maxItems": 3,
+          "minItems": 1,
+          "title": "Tasks",
+          "type": "array"
+        },
+        "mode": {
+          "enum": [
+            "benchmark",
+            "dynamic",
+            "hybrid"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "quick",
+            "full"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "seed": {
+          "default": 42,
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "benchmark_version": {
+          "default": "v1",
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Benchmark Version",
+          "type": "string"
+        },
+        "authorized_target": {
+          "default": false,
+          "title": "Authorized Target",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "tasks",
+        "mode",
+        "profile"
+      ],
+      "title": "RunRequest",
+      "type": "object"
+    },
+    "ModuleRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "benchmark",
+            "dynamic",
+            "hybrid"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "quick",
+            "full"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "seed": {
+          "maximum": 2147483647,
+          "minimum": 0,
+          "title": "Seed",
+          "type": "integer"
+        },
+        "benchmark_version": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Benchmark Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "mode",
+        "profile",
+        "seed",
+        "benchmark_version"
+      ],
+      "title": "ModuleRequest",
+      "type": "object"
+    },
+    "CaseResult": {
+      "$defs": {
+        "ErrorInfo": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "CONFIG_ERROR",
+                "DEPENDENCY_ERROR",
+                "TARGET_ERROR",
+                "TIMEOUT_ERROR",
+                "PARSE_ERROR",
+                "CASE_ERROR",
+                "CONTRACT_ERROR",
+                "INTERNAL_ERROR"
+              ],
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Message",
+              "type": "string"
+            },
+            "retryable": {
+              "default": false,
+              "title": "Retryable",
+              "type": "boolean"
+            },
+            "case_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Case Id"
+            },
+            "details": {
+              "additionalProperties": true,
+              "title": "Details",
+              "type": "object"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ErrorInfo",
+          "type": "object"
+        },
+        "Evidence": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "model_output",
+                "judge_reason",
+                "tool_trace",
+                "environment_diff",
+                "recovery_probe",
+                "metric",
+                "error",
+                "artifact"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Summary",
+              "type": "string"
+            },
+            "data": {
+              "default": null,
+              "title": "Data"
+            },
+            "artifact_path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Artifact Path"
+            },
+            "redacted": {
+              "default": true,
+              "title": "Redacted",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "summary"
+          ],
+          "title": "Evidence",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Case Id",
+          "type": "string"
+        },
+        "task_id": {
+          "enum": [
+            1,
+            2,
+            4
+          ],
+          "title": "Task Id",
+          "type": "integer"
+        },
+        "source": {
+          "enum": [
+            "benchmark",
+            "dynamic"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "engine": {
+          "enum": [
+            "benchmark",
+            "deepteam",
+            "agentdojo",
+            "fake"
+          ],
+          "title": "Engine",
+          "type": "string"
+        },
+        "category": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "scenario": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Scenario",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "passed",
+            "failed",
+            "partial",
+            "invalid"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "scores": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Scores",
+          "type": "object"
+        },
+        "reason": {
+          "maxLength": 5000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "input": {
+          "default": null,
+          "title": "Input"
+        },
+        "output": {
+          "default": null,
+          "title": "Output"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "duration_ms": {
+          "minimum": 0,
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ErrorInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "metadata": {
+          "additionalProperties": true,
+          "title": "Metadata",
+          "type": "object"
+        }
+      },
+      "required": [
+        "case_id",
+        "task_id",
+        "source",
+        "engine",
+        "category",
+        "scenario",
+        "status",
+        "reason",
+        "duration_ms"
+      ],
+      "title": "CaseResult",
+      "type": "object"
+    },
+    "CategorySummary": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "maxLength": 150,
+          "minLength": 1,
+          "title": "Category",
+          "type": "string"
+        },
+        "valid_cases": {
+          "minimum": 0,
+          "title": "Valid Cases",
+          "type": "integer"
+        },
+        "invalid_cases": {
+          "minimum": 0,
+          "title": "Invalid Cases",
+          "type": "integer"
+        },
+        "passed_cases": {
+          "minimum": 0,
+          "title": "Passed Cases",
+          "type": "integer"
+        },
+        "failed_cases": {
+          "minimum": 0,
+          "title": "Failed Cases",
+          "type": "integer"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        }
+      },
+      "required": [
+        "category",
+        "valid_cases",
+        "invalid_cases",
+        "passed_cases",
+        "failed_cases"
+      ],
+      "title": "CategorySummary",
+      "type": "object"
+    },
+    "TaskResult": {
+      "$defs": {
+        "CaseResult": {
+          "additionalProperties": false,
+          "properties": {
+            "case_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Case Id",
+              "type": "string"
+            },
+            "task_id": {
+              "enum": [
+                1,
+                2,
+                4
+              ],
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "source": {
+              "enum": [
+                "benchmark",
+                "dynamic"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "engine": {
+              "enum": [
+                "benchmark",
+                "deepteam",
+                "agentdojo",
+                "fake"
+              ],
+              "title": "Engine",
+              "type": "string"
+            },
+            "category": {
+              "maxLength": 150,
+              "minLength": 1,
+              "title": "Category",
+              "type": "string"
+            },
+            "scenario": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Scenario",
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "passed",
+                "failed",
+                "partial",
+                "invalid"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "scores": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Scores",
+              "type": "object"
+            },
+            "reason": {
+              "maxLength": 5000,
+              "minLength": 1,
+              "title": "Reason",
+              "type": "string"
+            },
+            "input": {
+              "default": null,
+              "title": "Input"
+            },
+            "output": {
+              "default": null,
+              "title": "Output"
+            },
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/Evidence"
+              },
+              "title": "Evidence",
+              "type": "array"
+            },
+            "duration_ms": {
+              "minimum": 0,
+              "title": "Duration Ms",
+              "type": "integer"
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ErrorInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "title": "Metadata",
+              "type": "object"
+            }
+          },
+          "required": [
+            "case_id",
+            "task_id",
+            "source",
+            "engine",
+            "category",
+            "scenario",
+            "status",
+            "reason",
+            "duration_ms"
+          ],
+          "title": "CaseResult",
+          "type": "object"
+        },
+        "CategorySummary": {
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "maxLength": 150,
+              "minLength": 1,
+              "title": "Category",
+              "type": "string"
+            },
+            "valid_cases": {
+              "minimum": 0,
+              "title": "Valid Cases",
+              "type": "integer"
+            },
+            "invalid_cases": {
+              "minimum": 0,
+              "title": "Invalid Cases",
+              "type": "integer"
+            },
+            "passed_cases": {
+              "minimum": 0,
+              "title": "Passed Cases",
+              "type": "integer"
+            },
+            "failed_cases": {
+              "minimum": 0,
+              "title": "Failed Cases",
+              "type": "integer"
+            },
+            "score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score"
+            }
+          },
+          "required": [
+            "category",
+            "valid_cases",
+            "invalid_cases",
+            "passed_cases",
+            "failed_cases"
+          ],
+          "title": "CategorySummary",
+          "type": "object"
+        },
+        "ErrorInfo": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "CONFIG_ERROR",
+                "DEPENDENCY_ERROR",
+                "TARGET_ERROR",
+                "TIMEOUT_ERROR",
+                "PARSE_ERROR",
+                "CASE_ERROR",
+                "CONTRACT_ERROR",
+                "INTERNAL_ERROR"
+              ],
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Message",
+              "type": "string"
+            },
+            "retryable": {
+              "default": false,
+              "title": "Retryable",
+              "type": "boolean"
+            },
+            "case_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Case Id"
+            },
+            "details": {
+              "additionalProperties": true,
+              "title": "Details",
+              "type": "object"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ErrorInfo",
+          "type": "object"
+        },
+        "Evidence": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "model_output",
+                "judge_reason",
+                "tool_trace",
+                "environment_diff",
+                "recovery_probe",
+                "metric",
+                "error",
+                "artifact"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Summary",
+              "type": "string"
+            },
+            "data": {
+              "default": null,
+              "title": "Data"
+            },
+            "artifact_path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Artifact Path"
+            },
+            "redacted": {
+              "default": true,
+              "title": "Redacted",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "summary"
+          ],
+          "title": "Evidence",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "task_id": {
+          "enum": [
+            1,
+            2,
+            4
+          ],
+          "title": "Task Id",
+          "type": "integer"
+        },
+        "module_version": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Module Version",
+          "type": "string"
+        },
+        "benchmark_version": {
+          "maxLength": 50,
+          "minLength": 1,
+          "title": "Benchmark Version",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "benchmark",
+            "dynamic",
+            "hybrid"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "profile": {
+          "enum": [
+            "quick",
+            "full"
+          ],
+          "title": "Profile",
+          "type": "string"
+        },
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/CaseResult"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "category_summaries": {
+          "items": {
+            "$ref": "#/$defs/CategorySummary"
+          },
+          "title": "Category Summaries",
+          "type": "array"
+        },
+        "benchmark_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Benchmark Score"
+        },
+        "dynamic_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dynamic Score"
+        },
+        "final_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Final Score"
+        },
+        "risk_level": {
+          "default": "unknown",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical",
+            "unknown"
+          ],
+          "title": "Risk Level",
+          "type": "string"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ErrorInfo"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "task_id",
+        "module_version",
+        "benchmark_version",
+        "mode",
+        "profile",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "TaskResult",
+      "type": "object"
+    },
+    "RunReport": {
+      "$defs": {
+        "CaseResult": {
+          "additionalProperties": false,
+          "properties": {
+            "case_id": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Case Id",
+              "type": "string"
+            },
+            "task_id": {
+              "enum": [
+                1,
+                2,
+                4
+              ],
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "source": {
+              "enum": [
+                "benchmark",
+                "dynamic"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "engine": {
+              "enum": [
+                "benchmark",
+                "deepteam",
+                "agentdojo",
+                "fake"
+              ],
+              "title": "Engine",
+              "type": "string"
+            },
+            "category": {
+              "maxLength": 150,
+              "minLength": 1,
+              "title": "Category",
+              "type": "string"
+            },
+            "scenario": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Scenario",
+              "type": "string"
+            },
+            "status": {
+              "enum": [
+                "passed",
+                "failed",
+                "partial",
+                "invalid"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "scores": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Scores",
+              "type": "object"
+            },
+            "reason": {
+              "maxLength": 5000,
+              "minLength": 1,
+              "title": "Reason",
+              "type": "string"
+            },
+            "input": {
+              "default": null,
+              "title": "Input"
+            },
+            "output": {
+              "default": null,
+              "title": "Output"
+            },
+            "evidence": {
+              "items": {
+                "$ref": "#/$defs/Evidence"
+              },
+              "title": "Evidence",
+              "type": "array"
+            },
+            "duration_ms": {
+              "minimum": 0,
+              "title": "Duration Ms",
+              "type": "integer"
+            },
+            "error": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ErrorInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null
+            },
+            "metadata": {
+              "additionalProperties": true,
+              "title": "Metadata",
+              "type": "object"
+            }
+          },
+          "required": [
+            "case_id",
+            "task_id",
+            "source",
+            "engine",
+            "category",
+            "scenario",
+            "status",
+            "reason",
+            "duration_ms"
+          ],
+          "title": "CaseResult",
+          "type": "object"
+        },
+        "CategorySummary": {
+          "additionalProperties": false,
+          "properties": {
+            "category": {
+              "maxLength": 150,
+              "minLength": 1,
+              "title": "Category",
+              "type": "string"
+            },
+            "valid_cases": {
+              "minimum": 0,
+              "title": "Valid Cases",
+              "type": "integer"
+            },
+            "invalid_cases": {
+              "minimum": 0,
+              "title": "Invalid Cases",
+              "type": "integer"
+            },
+            "passed_cases": {
+              "minimum": 0,
+              "title": "Passed Cases",
+              "type": "integer"
+            },
+            "failed_cases": {
+              "minimum": 0,
+              "title": "Failed Cases",
+              "type": "integer"
+            },
+            "score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Score"
+            }
+          },
+          "required": [
+            "category",
+            "valid_cases",
+            "invalid_cases",
+            "passed_cases",
+            "failed_cases"
+          ],
+          "title": "CategorySummary",
+          "type": "object"
+        },
+        "ErrorInfo": {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "enum": [
+                "CONFIG_ERROR",
+                "DEPENDENCY_ERROR",
+                "TARGET_ERROR",
+                "TIMEOUT_ERROR",
+                "PARSE_ERROR",
+                "CASE_ERROR",
+                "CONTRACT_ERROR",
+                "INTERNAL_ERROR"
+              ],
+              "title": "Code",
+              "type": "string"
+            },
+            "message": {
+              "maxLength": 1000,
+              "minLength": 1,
+              "title": "Message",
+              "type": "string"
+            },
+            "retryable": {
+              "default": false,
+              "title": "Retryable",
+              "type": "boolean"
+            },
+            "case_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Case Id"
+            },
+            "details": {
+              "additionalProperties": true,
+              "title": "Details",
+              "type": "object"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "title": "ErrorInfo",
+          "type": "object"
+        },
+        "Evidence": {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "model_output",
+                "judge_reason",
+                "tool_trace",
+                "environment_diff",
+                "recovery_probe",
+                "metric",
+                "error",
+                "artifact"
+              ],
+              "title": "Kind",
+              "type": "string"
+            },
+            "summary": {
+              "maxLength": 500,
+              "minLength": 1,
+              "title": "Summary",
+              "type": "string"
+            },
+            "data": {
+              "default": null,
+              "title": "Data"
+            },
+            "artifact_path": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Artifact Path"
+            },
+            "redacted": {
+              "default": true,
+              "title": "Redacted",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "kind",
+            "summary"
+          ],
+          "title": "Evidence",
+          "type": "object"
+        },
+        "RunRequest": {
+          "additionalProperties": false,
+          "properties": {
+            "tasks": {
+              "items": {
+                "enum": [
+                  1,
+                  2,
+                  4
+                ],
+                "type": "integer"
+              },
+              "maxItems": 3,
+              "minItems": 1,
+              "title": "Tasks",
+              "type": "array"
+            },
+            "mode": {
+              "enum": [
+                "benchmark",
+                "dynamic",
+                "hybrid"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "profile": {
+              "enum": [
+                "quick",
+                "full"
+              ],
+              "title": "Profile",
+              "type": "string"
+            },
+            "seed": {
+              "default": 42,
+              "maximum": 2147483647,
+              "minimum": 0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "benchmark_version": {
+              "default": "v1",
+              "maxLength": 50,
+              "minLength": 1,
+              "title": "Benchmark Version",
+              "type": "string"
+            },
+            "authorized_target": {
+              "default": false,
+              "title": "Authorized Target",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "tasks",
+            "mode",
+            "profile"
+          ],
+          "title": "RunRequest",
+          "type": "object"
+        },
+        "TaskResult": {
+          "additionalProperties": false,
+          "properties": {
+            "contract_version": {
+              "const": "1.0",
+              "default": "1.0",
+              "title": "Contract Version",
+              "type": "string"
+            },
+            "task_id": {
+              "enum": [
+                1,
+                2,
+                4
+              ],
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "module_version": {
+              "maxLength": 50,
+              "minLength": 1,
+              "title": "Module Version",
+              "type": "string"
+            },
+            "benchmark_version": {
+              "maxLength": 50,
+              "minLength": 1,
+              "title": "Benchmark Version",
+              "type": "string"
+            },
+            "mode": {
+              "enum": [
+                "benchmark",
+                "dynamic",
+                "hybrid"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "profile": {
+              "enum": [
+                "quick",
+                "full"
+              ],
+              "title": "Profile",
+              "type": "string"
+            },
+            "cases": {
+              "items": {
+                "$ref": "#/$defs/CaseResult"
+              },
+              "title": "Cases",
+              "type": "array"
+            },
+            "category_summaries": {
+              "items": {
+                "$ref": "#/$defs/CategorySummary"
+              },
+              "title": "Category Summaries",
+              "type": "array"
+            },
+            "benchmark_score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Benchmark Score"
+            },
+            "dynamic_score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Dynamic Score"
+            },
+            "final_score": {
+              "anyOf": [
+                {
+                  "maximum": 100,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Final Score"
+            },
+            "risk_level": {
+              "default": "unknown",
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "critical",
+                "unknown"
+              ],
+              "title": "Risk Level",
+              "type": "string"
+            },
+            "errors": {
+              "items": {
+                "$ref": "#/$defs/ErrorInfo"
+              },
+              "title": "Errors",
+              "type": "array"
+            },
+            "started_at": {
+              "format": "date-time",
+              "title": "Started At",
+              "type": "string"
+            },
+            "finished_at": {
+              "format": "date-time",
+              "title": "Finished At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "task_id",
+            "module_version",
+            "benchmark_version",
+            "mode",
+            "profile",
+            "started_at",
+            "finished_at"
+          ],
+          "title": "TaskResult",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "contract_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "completed",
+            "partial",
+            "failed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "request": {
+          "$ref": "#/$defs/RunRequest"
+        },
+        "task_results": {
+          "items": {
+            "$ref": "#/$defs/TaskResult"
+          },
+          "title": "Task Results",
+          "type": "array"
+        },
+        "overall_score": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Overall Score"
+        },
+        "risk_level": {
+          "default": "unknown",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical",
+            "unknown"
+          ],
+          "title": "Risk Level",
+          "type": "string"
+        },
+        "errors": {
+          "items": {
+            "$ref": "#/$defs/ErrorInfo"
+          },
+          "title": "Errors",
+          "type": "array"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "status",
+        "request",
+        "task_results",
+        "started_at",
+        "finished_at"
+      ],
+      "title": "RunReport",
+      "type": "object"
+    }
+  }
+}
