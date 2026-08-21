@@ -1,4 +1,4 @@
-"""Private AgentDojo 0.1.35 integration for the workspace sandbox."""
+"""Private Application security engine 0.1.35 integration for the workspace sandbox."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from security_eval.errors import DependencyError, EvaluationTimeoutError, Target
 
 from .models import AdapterResult, MatrixCase
 
-EXPECTED_AGENTDOJO_VERSION = "0.1.35"
+EXPECTED_ENGINE_VERSION = "0.1.35"
 SUPPORTED_ATTACK_MODEL_NAMES = (
     "gpt-4o-2024-05-13",
     "gpt-4o-mini-2024-07-18",
@@ -51,7 +51,7 @@ ATTACK_MODEL_ALIASES = {
 }
 
 
-class AgentDojoAdapter:
+class ApplicationSecurityAdapter:
     """Run one isolated workspace case and return only serializable evidence."""
 
     def validate(self, context: RunContext) -> None:
@@ -60,21 +60,21 @@ class AgentDojoAdapter:
             importlib.import_module("agentdojo")
             importlib.import_module("openai")
         except (importlib.metadata.PackageNotFoundError, ImportError) as exc:
-            raise DependencyError("AgentDojo 0.1.35 is not installed") from exc
-        if installed != EXPECTED_AGENTDOJO_VERSION:
+            raise DependencyError("Application security engine 0.1.35 is not installed") from exc
+        if installed != EXPECTED_ENGINE_VERSION:
             raise DependencyError(
-                f"Unsupported AgentDojo version {installed}; expected {EXPECTED_AGENTDOJO_VERSION}"
+                f"Unsupported Application security engine version {installed}; expected {EXPECTED_ENGINE_VERSION}"
             )
         target = context.target_client
         for attribute in ("base_url", "api_key"):
             if not getattr(target, attribute, None):
                 raise DependencyError(
-                    f"Target client does not expose {attribute} for AgentDojo"
+                    f"Target client does not expose {attribute} for Application security engine"
                 )
-        model = getattr(context.settings, "agentdojo_model", None)
+        model = getattr(context.settings, "application_security_model", None)
         if not model:
-            raise DependencyError("AgentDojo model is not configured")
-        resolve_attack_model_name(model)
+            raise DependencyError("Application security engine model is not configured")
+        resolve_engine_model_name(model)
 
     def available_task_ids(self) -> tuple[tuple[str, ...], tuple[str, ...]]:
         suite = self._suite()
@@ -118,15 +118,15 @@ class AgentDojoAdapter:
 
             if isinstance(exc, (openai.APITimeoutError, TimeoutError)):
                 raise EvaluationTimeoutError(
-                    "AgentDojo target request timed out", case_id=case.case_id
+                    "Application security engine target request timed out", case_id=case.case_id
                 ) from None
             if isinstance(exc, openai.APIError):
                 raise TargetError(
-                    f"AgentDojo target request failed: {type(exc).__name__}",
+                    f"Application security engine target request failed: {type(exc).__name__}",
                     case_id=case.case_id,
                 ) from None
             raise
-        # AgentDojo's second raw boolean means that the injection goal was
+        # Application security engine's second raw boolean means that the injection goal was
         # completed. Normalize it at the adapter boundary so this package uses
         # security=True to mean that the attack was resisted. DoS is defined by
         # loss of utility rather than by the placeholder injection task.
@@ -140,7 +140,7 @@ class AgentDojoAdapter:
             environment_diff=_environment_diff(pre_environment, environment),
             duration_ms=duration_ms,
             error=logger.error,
-            agentdojo_version=EXPECTED_AGENTDOJO_VERSION,
+            engine_version=EXPECTED_ENGINE_VERSION,
         )
 
     @staticmethod
@@ -182,11 +182,11 @@ class AgentDojoAdapter:
                 float(getattr(target, "timeout_seconds", 60)), remaining_seconds
             ),
         )
-        model = context.settings.agentdojo_model
+        model = context.settings.application_security_model
         llm = OpenAILLM(client, model)
-        # Keep the real API model ID on OpenAILLM, but give AgentDojo a
+        # Keep the real API model ID on OpenAILLM, but give Application security engine a
         # separately normalized pipeline name for its attack templates.
-        llm.name = resolve_attack_model_name(model)
+        llm.name = resolve_engine_model_name(model)
         return AgentPipeline.from_config(
             PipelineConfig(
                 llm=llm,
@@ -237,8 +237,8 @@ def _normalized_security(
     return not injection_goal_completed
 
 
-def resolve_attack_model_name(model_id: str) -> str:
-    """Resolve an API model ID to a name AgentDojo 0.1.35 can recognize."""
+def resolve_engine_model_name(model_id: str) -> str:
+    """Resolve an API model ID to a name Application security engine 0.1.35 can recognize."""
 
     normalized = model_id.strip()
     if normalized in ATTACK_MODEL_ALIASES:
@@ -248,7 +248,7 @@ def resolve_attack_model_name(model_id: str) -> str:
             return supported
     aliases = ", ".join(sorted(ATTACK_MODEL_ALIASES))
     raise DependencyError(
-        "AgentDojo cannot identify the configured model for attack templates; "
+        "Application security engine cannot identify the configured model for attack templates; "
         f"use a supported snapshot name or one of these aliases: {aliases}"
     )
 

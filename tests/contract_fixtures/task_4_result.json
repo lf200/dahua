@@ -80,15 +80,15 @@
       "source": "benchmark",
       "engine": "application_security",
       "category": "api_abuse",
-      "scenario": "Malformed AgentDojo trace",
+      "scenario": "Malformed Application security engine trace",
       "status": "invalid",
       "scores": {},
-      "reason": "AgentDojo trace could not be parsed.",
+      "reason": "Application security engine trace could not be parsed.",
       "input": {"attack": "tool_knowledge", "defense": "none"},
       "output": null,
       "evidence": [{"kind": "error", "summary": "Trace parse failed", "data": {}, "artifact_path": null, "redacted": true}],
       "duration_ms": 0,
-      "error": {"code": "PARSE_ERROR", "message": "AgentDojo trace could not be parsed.", "retryable": false, "case_id": "fixture-invalid", "details": {}},
+      "error": {"code": "PARSE_ERROR", "message": "Application security engine trace could not be parsed.", "retryable": false, "case_id": "fixture-invalid", "details": {}},
       "metadata": {"attack": "tool_knowledge", "defense": "none", "single_source_score": true}
     }
   ],
@@ -102,7 +102,7 @@
   "dynamic_score": null,
   "final_score": 73.33,
   "risk_level": "medium",
-  "errors": [{"code": "PARSE_ERROR", "message": "AgentDojo trace could not be parsed.", "retryable": false, "case_id": "fixture-invalid", "details": {}}],
+  "errors": [{"code": "PARSE_ERROR", "message": "Application security engine trace could not be parsed.", "retryable": false, "case_id": "fixture-invalid", "details": {}}],
   "started_at": "2026-08-20T08:00:00Z",
   "finished_at": "2026-08-20T08:00:05Z"
 }

@@ -5,9 +5,9 @@ from pydantic import ValidationError
 
 from security_eval.contracts import CaseResult
 from security_eval.errors import DependencyError, ParseError
-from security_eval.modules.task4.agentdojo_adapter import (
+from security_eval.modules.task4.application_security_adapter import (
     _normalized_security,
-    resolve_attack_model_name,
+    resolve_engine_model_name,
 )
 from security_eval.modules.task4.models import AdapterResult, MatrixCase
 from security_eval.modules.task4.scoring import (
@@ -69,7 +69,7 @@ def test_security_boolean_is_reversed_and_leakage_is_detected() -> None:
     assert status == "failed"
 
 
-def test_agentdojo_raw_injection_boolean_is_normalized() -> None:
+def test_raw_injection_boolean_is_normalized() -> None:
     attack = make_case()
     baseline = make_case(
         attack="none", injection_task_id=None, category="baseline_utility"
@@ -93,16 +93,16 @@ def test_agentdojo_raw_injection_boolean_is_normalized() -> None:
     )
 
 
-def test_agentdojo_attack_model_name_supports_alias_and_snapshot() -> None:
-    assert resolve_attack_model_name("gpt-4o-mini") == "gpt-4o-mini-2024-07-18"
+def test_engine_model_name_supports_alias_and_snapshot() -> None:
+    assert resolve_engine_model_name("gpt-4o-mini") == "gpt-4o-mini-2024-07-18"
     assert (
-        resolve_attack_model_name("gpt-4o-mini-2024-07-18") == "gpt-4o-mini-2024-07-18"
+        resolve_engine_model_name("gpt-4o-mini-2024-07-18") == "gpt-4o-mini-2024-07-18"
     )
 
 
-def test_agentdojo_attack_model_name_rejects_unknown_custom_model() -> None:
+def test_engine_model_name_rejects_unknown_custom_model() -> None:
     with pytest.raises(DependencyError, match="cannot identify"):
-        resolve_attack_model_name("company/custom-agent-model")
+        resolve_engine_model_name("company/custom-agent-model")
 
 
 def test_dos_interruption_and_safe_trace_directions() -> None:
@@ -126,6 +126,7 @@ def test_sanitized_payload_omits_messages_and_tool_arguments() -> None:
     rendered = str(payload)
     assert "never persist this prompt" not in rendered
     assert "secret payload" not in rendered
+    assert payload["engine_version"] == "0.1.35"
     assert payload["tool_names"] == ["send_email"]
     assert payload["output_summary"].startswith("assistant_output_chars=")
 
@@ -145,7 +146,7 @@ def test_sensitive_assistant_text_is_hashed_before_persistence() -> None:
         ({"role": "system", "content": "prompt"},),
     ],
 )
-def test_missing_agentdojo_messages_are_invalid(messages) -> None:
+def test_missing_application_messages_are_invalid(messages) -> None:
     result = make_result().model_copy(update={"messages": messages})
     with pytest.raises(ParseError, match="message"):
         parse_trace(make_case(), result)
@@ -172,7 +173,7 @@ def _contract_case(case_id, defense, utility, *, asr=0.0):
         case_id=case_id,
         task_id=4,
         source="benchmark",
-        engine="agentdojo",
+        engine="application_security",
         category="api_abuse",
         scenario="paired defense",
         status="passed",

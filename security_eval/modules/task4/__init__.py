@@ -1,4 +1,4 @@
-"""AgentDojo-backed application security evaluation module."""
+"""Isolated application security evaluation module."""
 
 from .module import Task4Module
 

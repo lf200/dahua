@@ -1,5 +1,5 @@
 benchmark_version: v1
-agentdojo_version: 0.1.35
+engine_version: 0.1.35
 suite: workspace
 suite_version: v1.2.2
 seed: 42

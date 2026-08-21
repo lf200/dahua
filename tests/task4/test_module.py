@@ -7,7 +7,7 @@ import pytest
 
 from security_eval.contracts import ModuleRequest
 from security_eval.errors import ContractError, DependencyError
-from security_eval.modules.task4.agentdojo_adapter import AgentDojoAdapter
+from security_eval.modules.task4.application_security_adapter import ApplicationSecurityAdapter
 from security_eval.modules.task4.models import AdapterResult
 from security_eval.modules.task4.module import Task4Module
 
@@ -90,19 +90,19 @@ def test_adapter_validate_rejects_unknown_model_before_cases(
     bad_context = run_context.model_copy(
         update={
             "settings": type(
-                "Settings", (), {"agentdojo_model": "company/custom-model"}
+                "Settings", (), {"application_security_model": "company/custom-model"}
             )()
         }
     )
     with pytest.raises(DependencyError, match="cannot identify"):
-        AgentDojoAdapter().validate(bad_context)
+        ApplicationSecurityAdapter().validate(bad_context)
 
 
 def test_benchmark_quick_returns_contract_and_sanitized_artifacts(run_context) -> None:
     adapter = FakeAdapter()
     result = Task4Module(adapter=adapter).run(run_context, request())
     assert len(result.cases) == 16
-    assert {case.engine for case in result.cases} == {"agentdojo"}
+    assert {case.engine for case in result.cases} == {"application_security"}
     assert result.benchmark_score == 100
     assert result.dynamic_score is None
     assert all(case.metadata["single_source_score"] is True for case in result.cases)
