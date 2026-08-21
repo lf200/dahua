@@ -14,13 +14,23 @@ def base_env() -> dict[str, str]:
     }
 
 
-def test_load_settings_uses_target_for_judge_defaults(tmp_path) -> None:
+def test_load_settings_uses_target_for_optional_model_defaults(tmp_path) -> None:
     env = base_env() | {"OUTPUT_ROOT": str(tmp_path / "runs")}
     settings = load_settings(env, dotenv_path=None)
     assert settings.target_base_url == "https://example.test/v1"
     assert settings.judge_model == "model-a"
+    assert settings.application_security_model == "model-a"
     assert settings.judge_api_key.get_secret_value() == "secret"
     assert "api_key" not in settings.public_summary()
+
+
+def test_application_security_model_accepts_explicit_value() -> None:
+    settings = load_settings(
+        base_env() | {"APPLICATION_SECURITY_MODEL": "app-model"},
+        dotenv_path=None,
+    )
+    assert settings.application_security_model == "app-model"
+    assert settings.public_summary()["application_security_model"] == "app-model"
 
 
 def test_missing_key_is_secret_safe() -> None:

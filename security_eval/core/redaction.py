@@ -13,6 +13,7 @@ from pydantic import BaseModel, SecretStr
 from security_eval.core.config import Settings
 
 REDACTED = "[REDACTED]"
+SOURCE_NEUTRAL = "[PRIVATE_ENGINE]"
 SENSITIVE_KEYS = {
     "api_key",
     "authorization",
@@ -25,6 +26,10 @@ SENSITIVE_KEYS = {
 }
 BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+[A-Za-z0-9._~+\-/]+=*")
 SK_PATTERN = re.compile(r"\bsk-[A-Za-z0-9_-]{8,}\b")
+PRIVATE_ENGINE_PATTERN = re.compile(
+    r"(?:deep[\s._-]*team|deep[\s._-]*eval|agent[\s._-]*dojo)",
+    re.IGNORECASE,
+)
 
 
 def _secret_values(settings: Settings | None) -> tuple[str, ...]:
@@ -38,11 +43,29 @@ def _secret_values(settings: Settings | None) -> tuple[str, ...]:
 
 
 def redact_text(text: str, settings: Settings | None = None) -> str:
-    result = BEARER_PATTERN.sub(f"Bearer {REDACTED}", text)
+    result = PRIVATE_ENGINE_PATTERN.sub(SOURCE_NEUTRAL, text)
+    result = BEARER_PATTERN.sub(f"Bearer {REDACTED}", result)
     result = SK_PATTERN.sub(REDACTED, result)
     for secret in _secret_values(settings):
         result = result.replace(secret, REDACTED)
     return result
+
+
+def neutralize_source_value(value: Any) -> Any:
+    """Remove private engine identities from values crossing public boundaries."""
+
+    if isinstance(value, str):
+        return PRIVATE_ENGINE_PATTERN.sub(SOURCE_NEUTRAL, value)
+    if isinstance(value, Mapping):
+        return {
+            str(neutralize_source_value(str(key))): neutralize_source_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        return [neutralize_source_value(item) for item in value]
+    if isinstance(value, set):
+        return sorted(neutralize_source_value(item) for item in value)
+    return value
 
 
 def _is_sensitive_key(key: object) -> bool:
@@ -68,10 +91,11 @@ def sanitize_value(value: Any, settings: Settings | None = None) -> Any:
         role_is_system = str(value.get("role", "")).lower() == "system"
         sanitized: dict[str, Any] = {}
         for key, item in value.items():
+            neutral_key = str(neutralize_source_value(str(key)))
             if _is_sensitive_key(key) or (role_is_system and str(key).lower() == "content"):
-                sanitized[str(key)] = REDACTED
+                sanitized[neutral_key] = REDACTED
             else:
-                sanitized[str(key)] = sanitize_value(item, settings)
+                sanitized[neutral_key] = sanitize_value(item, settings)
         return sanitized
     if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
         return [sanitize_value(item, settings) for item in value]

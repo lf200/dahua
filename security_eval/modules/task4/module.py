@@ -1,4 +1,4 @@
-"""Task 4 AgentDojo application-security evaluation module."""
+"""Task 4 Application security engine application-security evaluation module."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from security_eval.contracts import (
     RunContext,
     TaskResult,
 )
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     CaseEvaluationError,
     ContractError,
@@ -26,7 +27,7 @@ from security_eval.errors import (
     normalize_exception,
 )
 
-from .agentdojo_adapter import AgentDojoAdapter
+from .application_security_adapter import ApplicationSecurityAdapter
 from .matrix import (
     DEFAULT_MATRIX_PATH,
     benchmark_cases,
@@ -50,13 +51,13 @@ class Task4Module:
     def __init__(
         self, *, adapter: Any | None = None, matrix_path: Path | None = None
     ) -> None:
-        self._adapter = adapter or AgentDojoAdapter()
+        self._adapter = adapter or ApplicationSecurityAdapter()
         self._matrix_path = matrix_path or DEFAULT_MATRIX_PATH
 
     def metadata(self) -> ModuleMetadata:
         return ModuleMetadata(
             task_id=4,
-            name="AgentDojo Application Security",
+            name="Application security engine Application Security",
             module_version="1.0.0",
             benchmark_version="v1",
             supported_modes={"benchmark", "dynamic", "hybrid"},
@@ -187,7 +188,9 @@ class Task4Module:
             finished_at=_now(),
         )
         return TaskResult.model_validate(
-            context.sanitize_value(result.model_dump(mode="python"))
+            neutralize_source_value(
+                context.sanitize_value(result.model_dump(mode="python"))
+            )
         )
 
     def _run_cases(
@@ -209,7 +212,7 @@ class Task4Module:
                 adapter_result: AdapterResult = self._adapter.run_case(context, case)
                 if adapter_result.error:
                     raise ParseError(
-                        "AgentDojo returned an error-bearing trace",
+                        "Application security engine returned an error-bearing trace",
                         case_id=case.case_id,
                     )
                 parsed = parse_trace(case, adapter_result)
@@ -226,7 +229,7 @@ class Task4Module:
                         case_id=case.case_id,
                         task_id=4,
                         source=source,
-                        engine="agentdojo",
+                        engine="application_security",
                         category=case.category,
                         scenario=case.scenario,
                         status=status,
@@ -262,7 +265,7 @@ class Task4Module:
                         metadata={
                             "suite": "workspace",
                             "suite_version": "v1.2.2",
-                            "agentdojo_version": adapter_result.agentdojo_version,
+                            "engine_version": adapter_result.engine_version,
                             "user_task_id": case.user_task_id,
                             "injection_task_id": case.injection_task_id,
                             "attack": case.attack,
@@ -276,7 +279,7 @@ class Task4Module:
                     exc = CaseEvaluationError(
                         "Task 4 case execution failed",
                         case_id=case.case_id,
-                        details={"exception_type": type(exc).__name__},
+                        details={"stage": "case_execution"},
                     )
                 results.append(self._invalid_case(context, case, source, exc))
         return results
@@ -292,7 +295,7 @@ class Task4Module:
             case_id=case.case_id,
             task_id=4,
             source=source,
-            engine="agentdojo",
+            engine="application_security",
             category=case.category,
             scenario=case.scenario,
             status="invalid",

@@ -47,8 +47,8 @@ class ChatClient:
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
             raise TargetError(f"Chat endpoint returned HTTP {exc.code}", retryable=exc.code >= 500) from None
-        except (URLError, TimeoutError, OSError) as exc:
-            raise TargetError(f"Chat endpoint request failed: {type(exc).__name__}") from None
+        except (URLError, TimeoutError, OSError):
+            raise TargetError("Chat endpoint request failed") from None
 
         try:
             body = json.loads(raw)

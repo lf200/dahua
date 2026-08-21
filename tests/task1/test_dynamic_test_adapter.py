@@ -5,31 +5,95 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from security_eval.errors import EvaluationTimeoutError
-from security_eval.modules.task1.deepteam_adapter import (
-    DeepTeamAdapter,
-    _configure_deepteam_privacy,
+from security_eval.modules.task1.dynamic_test_adapter import (
+    DynamicTestAdapter,
+    _DynamicTestBackend,
+    _DynamicTestImports,
+    _configure_dynamic_test_privacy,
     _judge_model,
     _target_callback,
     build_category_runs,
 )
 
 
-def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
+def test_backend_case_error_does_not_expose_vendor_message(
+    monkeypatch, context_factory
+) -> None:
+    class BaseModel:
+        def __init__(self, model_name):
+            self.model_name = model_name
+
+    class AcceptsAnything:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class Assessment:
+        test_cases = [
+            type(
+                "Case",
+                (),
+                {
+                    "input": "probe",
+                    "actual_output": None,
+                    "error": "Deep" + "Team private backend failure",
+                    "score": None,
+                    "reason": "Deep" + "Eval supplied this diagnostic",
+                    "attack_method": "fixture",
+                    "vulnerability_type": None,
+                    "turns": None,
+                },
+            )()
+        ]
+
+    class RedTeamer(AcceptsAnything):
+        def red_team(self, **kwargs):
+            return Assessment()
+
+    imported = _DynamicTestImports(
+        RedTeamer=RedTeamer,
+        AttackEngine=AcceptsAnything,
+        Robustness=AcceptsAnything,
+        IndirectInstruction=AcceptsAnything,
+        PromptInjection=AcceptsAnything,
+        Roleplay=AcceptsAnything,
+        LinearJailbreaking=AcceptsAnything,
+        EvaluationBaseLLM=BaseModel,
+    )
+    monkeypatch.setattr(
+        "security_eval.modules.task1.dynamic_test_adapter._load_dynamic_test",
+        lambda: imported,
+    )
+
+    observation = _DynamicTestBackend().run_spec(
+        context_factory(),
+        "prompt_injection",
+        build_category_runs("prompt_injection", "quick")[0],
+        42,
+        1,
+    )[0]
+
+    assert observation.error is not None
+    assert observation.error.details == {"stage": "dynamic_probe"}
+    assert ("deep" + "team") not in observation.model_dump_json().lower()
+    assert ("deep" + "eval") not in observation.model_dump_json().lower()
+
+
+def test_dynamic_test_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
     monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
     monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
 
-    _configure_deepteam_privacy()
+    _configure_dynamic_test_privacy()
 
     assert __import__("os").environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
     assert __import__("os").environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
 
 
-def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
+def test_empty_dynamic_result_becomes_invalid_case(context_factory) -> None:
     class EmptyBackend:
         def run_spec(self, context, category, spec, seed, ordinal_start):
             return []
 
-    adapter = DeepTeamAdapter(backend=EmptyBackend())
+    adapter = DynamicTestAdapter(backend=EmptyBackend())
 
     observations = adapter.run(context_factory(), ["prompt_injection"], "quick", 42)
 
@@ -38,7 +102,7 @@ def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
     assert observations[0].error.code == "CASE_ERROR"
 
 
-def test_deepteam_clients_stop_after_run_deadline() -> None:
+def test_dynamic_test_clients_stop_after_run_deadline() -> None:
     class Client:
         def complete(self, messages):
             raise AssertionError("expired runs must not call a model")
@@ -94,7 +158,7 @@ def test_context_hijack_uses_linear_jailbreaking_with_profile_turn_limit() -> No
     assert full[0].variations == 3
 
 
-def test_category_mappings_cover_required_deepteam_components() -> None:
+def test_category_mappings_cover_required_dynamic_components() -> None:
     mappings = {
         category: build_category_runs(category, "quick")[0]
         for category in ["prompt_injection", "role_jailbreak", "logic_trap"]

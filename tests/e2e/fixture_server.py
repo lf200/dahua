@@ -18,7 +18,7 @@ if __name__ == "__main__":
         public_settings={
             "target_model": "fixture-target",
             "judge_model": "fixture-judge",
-            "agentdojo_model": "fixture-agent",
+            "application_security_model": "fixture-application",
         },
     )
     app.run(host="127.0.0.1", port=5055, debug=False, use_reloader=False)

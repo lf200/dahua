@@ -61,7 +61,7 @@ class FakeDynamicAdapter:
             Task2Case(
                 case_id=f"t2-{category.lower()}-dynamic-{seed}-{index}",
                 source="dynamic",
-                engine="deepteam",
+                engine="dynamic_test",
                 category=category,
                 scenario="fake_dynamic",
                 messages=[
@@ -94,7 +94,7 @@ def settings(tmp_path: Path) -> Settings:
         judge_base_url="https://judge.example/v1",
         judge_api_key="sk-private-judge-secret",
         judge_model="judge-model",
-        agentdojo_model="dojo-model",
+        application_security_model="application-model",
         output_root=tmp_path / "runs",
     )
 

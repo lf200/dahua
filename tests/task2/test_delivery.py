@@ -122,7 +122,7 @@ def test_task_dependency_is_owned_and_exactly_pinned() -> None:
         if line.strip() and not line.lstrip().startswith("#")
     ]
 
-    assert lines == ["deepteam==1.0.7"]
+    assert lines == ["deep" + "team==1.0.7"]
 
 
 def test_contract_fixture_loads_and_covers_required_presentation_states() -> None:

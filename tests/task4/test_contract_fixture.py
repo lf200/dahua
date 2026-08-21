@@ -13,7 +13,7 @@ def test_task4_contract_fixture_is_valid_and_complete() -> None:
         "partial",
         "invalid",
     }
-    assert {case.engine for case in result.cases} == {"agentdojo"}
+    assert {case.engine for case in result.cases} == {"application_security"}
     assert {case.metadata.get("defense") for case in result.cases} == {
         "none",
         "tool_filter",

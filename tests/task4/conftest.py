@@ -20,7 +20,7 @@ def run_context(tmp_path):
         return value
 
     return RunContext(
-        settings=SimpleNamespace(agentdojo_model="test-model"),
+        settings=SimpleNamespace(application_security_model="test-model"),
         target_client=SimpleNamespace(
             base_url="https://example.invalid/v1",
             api_key="sk-secret-value",

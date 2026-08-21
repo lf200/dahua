@@ -71,7 +71,7 @@ def test_full_and_quick_inventory_is_balanced_and_original() -> None:
 
 @pytest.mark.parametrize(
     ("source", "engine"),
-    [("benchmark", "deepteam"), ("dynamic", "benchmark")],
+    [("benchmark", "dynamic_test"), ("dynamic", "benchmark")],
 )
 def test_task2_case_rejects_incoherent_runtime_origin(source: str, engine: str) -> None:
     raw = json.loads(CASES_PATH.read_text(encoding="utf-8").splitlines()[0])
@@ -83,7 +83,7 @@ def test_task2_case_rejects_incoherent_runtime_origin(source: str, engine: str) 
 
 def test_static_loader_rejects_dynamic_runtime_origin(tmp_path: Path) -> None:
     raw = json.loads(CASES_PATH.read_text(encoding="utf-8").splitlines()[0])
-    raw.update(source="dynamic", engine="deepteam")
+    raw.update(source="dynamic", engine="dynamic_test")
     path = tmp_path / "dynamic.jsonl"
     path.write_text(json.dumps(raw) + "\n", encoding="utf-8", newline="\n")
 

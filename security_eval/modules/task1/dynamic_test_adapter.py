@@ -1,4 +1,4 @@
-"""DeepTeam 1.0.7 isolation layer for task 1 dynamic probes."""
+"""Dynamic test engine 1.0.7 isolation layer for task 1 dynamic probes."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from security_eval.contracts import ErrorInfo, Profile, RunContext
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     DependencyError,
     EvaluationTimeoutError,
@@ -20,14 +21,14 @@ from security_eval.errors import (
 from security_eval.modules.task1.benchmark import Category
 
 
-def _configure_deepteam_privacy() -> None:
-    """Disable DeepTeam and DeepEval telemetry before third-party imports."""
+def _configure_dynamic_test_privacy() -> None:
+    """Disable dynamic and evaluation telemetry before third-party imports."""
 
     os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] = "YES"
     os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] = "YES"
 
 
-class DeepTeamRunSpec(BaseModel):
+class DynamicTestRunSpec(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     vulnerability: str
@@ -49,8 +50,8 @@ class DynamicObservation(BaseModel):
     attack_output: str | None = None
     attack_method: str | None = None
     vulnerability_type: str | None = None
-    deepteam_score: float | None = None
-    deepteam_reason: str | None = None
+    engine_score: float | None = None
+    engine_reason: str | None = None
     expected_behavior: str = Field(min_length=1, max_length=2000)
     forbidden_outcomes: list[str] = Field(min_length=1, max_length=20)
     recognition_criteria: str = Field(min_length=1, max_length=2000)
@@ -179,12 +180,12 @@ def _dynamic_scoring_contract(category: Category) -> _DynamicScoringContract:
     return _DYNAMIC_SCORING_CONTRACTS[category]
 
 
-def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRunSpec]:
+def build_category_runs(category: Category, profile: Profile) -> list[DynamicTestRunSpec]:
     variations = 1 if profile == "quick" else 3
     max_turns = 3 if profile == "quick" else 5
     if category == "prompt_injection":
         return [
-            DeepTeamRunSpec(
+            DynamicTestRunSpec(
                 vulnerability="Robustness",
                 vulnerability_types=["hijacking"],
                 attack="PromptInjection",
@@ -201,7 +202,7 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
                 ("cross_context_injection", 1),
             ]
         return [
-            DeepTeamRunSpec(
+            DynamicTestRunSpec(
                 vulnerability="IndirectInstruction",
                 vulnerability_types=[vulnerability_type],
                 attack="PromptInjection",
@@ -212,7 +213,7 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
         ]
     if category == "role_jailbreak":
         return [
-            DeepTeamRunSpec(
+            DynamicTestRunSpec(
                 vulnerability="Robustness",
                 vulnerability_types=["hijacking"],
                 attack="Roleplay",
@@ -222,7 +223,7 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
         ]
     if category == "logic_trap":
         return [
-            DeepTeamRunSpec(
+            DynamicTestRunSpec(
                 vulnerability="Robustness",
                 vulnerability_types=["input_overreliance"],
                 attack="Roleplay",
@@ -231,7 +232,7 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
             )
         ]
     return [
-        DeepTeamRunSpec(
+        DynamicTestRunSpec(
             vulnerability="Robustness",
             vulnerability_types=["hijacking"],
             attack="LinearJailbreaking",
@@ -242,23 +243,23 @@ def build_category_runs(category: Category, profile: Profile) -> list[DeepTeamRu
     ]
 
 
-class DeepTeamBackend(Protocol):
+class DynamicTestBackend(Protocol):
     def run_spec(
         self,
         context: RunContext,
         category: Category,
-        spec: DeepTeamRunSpec,
+        spec: DynamicTestRunSpec,
         seed: int,
         ordinal_start: int,
     ) -> list[DynamicObservation]: ...
 
 
-class DeepTeamAdapter:
-    """Run category-scoped DeepTeam probes without leaking third-party objects."""
+class DynamicTestAdapter:
+    """Run category-scoped Dynamic test engine probes without leaking third-party objects."""
 
-    def __init__(self, backend: DeepTeamBackend | None = None) -> None:
-        _configure_deepteam_privacy()
-        self._backend = backend or _DeepTeamBackend()
+    def __init__(self, backend: DynamicTestBackend | None = None) -> None:
+        _configure_dynamic_test_privacy()
+        self._backend = backend or _DynamicTestBackend()
 
     def run(
         self,
@@ -283,7 +284,7 @@ class DeepTeamAdapter:
                         DynamicObservation(
                             case_id=f"t1-dynamic-{category}-{ordinal:02d}",
                             category=category,
-                            scenario=f"DeepTeam {category} dynamic probe",
+                            scenario=f"Dynamic test engine {category} dynamic probe",
                             **scoring_contract,
                             metadata={"seed": run_seed, "profile": profile},
                             error=error,
@@ -294,12 +295,12 @@ class DeepTeamAdapter:
                         DynamicObservation(
                             case_id=f"t1-dynamic-{category}-{ordinal:02d}",
                             category=category,
-                            scenario=f"DeepTeam {category} dynamic probe",
+                            scenario=f"Dynamic test engine {category} dynamic probe",
                             **scoring_contract,
                             metadata={"seed": run_seed, "profile": profile},
                             error=ErrorInfo(
                                 code="CASE_ERROR",
-                                message="DeepTeam returned no dynamic probe results",
+                                message="Dynamic test engine returned no dynamic probe results",
                                 case_id=f"t1-dynamic-{category}-{ordinal:02d}",
                             ),
                         )
@@ -310,7 +311,7 @@ class DeepTeamAdapter:
 
 
 @dataclass(frozen=True, slots=True)
-class _DeepTeamImports:
+class _DynamicTestImports:
     RedTeamer: Any
     AttackEngine: Any
     Robustness: Any
@@ -318,13 +319,13 @@ class _DeepTeamImports:
     PromptInjection: Any
     Roleplay: Any
     LinearJailbreaking: Any
-    DeepEvalBaseLLM: Any
+    EvaluationBaseLLM: Any
 
 
-def _load_deepteam() -> _DeepTeamImports:
-    _configure_deepteam_privacy()
+def _load_dynamic_test() -> _DynamicTestImports:
+    _configure_dynamic_test_privacy()
     try:
-        from deepeval.models import DeepEvalBaseLLM
+        from deepeval.models import DeepEvalBaseLLM as EvaluationBaseLLM
         from deepteam.attacks.attack_engine import AttackEngine
         from deepteam.attacks.multi_turn import LinearJailbreaking
         from deepteam.attacks.single_turn import PromptInjection, Roleplay
@@ -332,9 +333,9 @@ def _load_deepteam() -> _DeepTeamImports:
         from deepteam.vulnerabilities import IndirectInstruction, Robustness
     except ImportError as exc:
         raise DependencyError(
-            "DeepTeam 1.0.7 is required for task 1 dynamic mode"
+            "Dynamic test engine 1.0.7 is required for task 1 dynamic mode"
         ) from exc
-    return _DeepTeamImports(
+    return _DynamicTestImports(
         RedTeamer=RedTeamer,
         AttackEngine=AttackEngine,
         Robustness=Robustness,
@@ -342,7 +343,7 @@ def _load_deepteam() -> _DeepTeamImports:
         PromptInjection=PromptInjection,
         Roleplay=Roleplay,
         LinearJailbreaking=LinearJailbreaking,
-        DeepEvalBaseLLM=DeepEvalBaseLLM,
+        EvaluationBaseLLM=EvaluationBaseLLM,
     )
 
 
@@ -422,22 +423,22 @@ def _messages_from_test_case(test_case: Any) -> list[dict[str, Any]]:
     return messages
 
 
-class _DeepTeamBackend:
+class _DynamicTestBackend:
     def run_spec(
         self,
         context: RunContext,
         category: Category,
-        spec: DeepTeamRunSpec,
+        spec: DynamicTestRunSpec,
         seed: int,
         ordinal_start: int,
     ) -> list[DynamicObservation]:
-        imported = _load_deepteam()
+        imported = _load_dynamic_test()
         scoring_contract = _dynamic_scoring_contract(category).model_dump()
         model_name = str(
             getattr(context.settings, "judge_model", "task1-context-judge")
         )
         judge_model = _judge_model(
-            imported.DeepEvalBaseLLM,
+            imported.EvaluationBaseLLM,
             context.judge_client,
             model_name,
             deadline=context.deadline,
@@ -526,7 +527,7 @@ class _DeepTeamBackend:
                 DynamicObservation(
                     case_id=f"t1-dynamic-{category}-{ordinal_start + offset:02d}",
                     category=category,
-                    scenario=f"DeepTeam {category} dynamic probe",
+                    scenario=f"Dynamic test engine {category} dynamic probe",
                     messages=messages,
                     attack_input=getattr(test_case, "input", None),
                     attack_output=str(output) if output is not None else None,
@@ -536,25 +537,23 @@ class _DeepTeamBackend:
                             getattr(test_case, "vulnerability_type", None), "value", ""
                         )
                     ),
-                    deepteam_score=getattr(test_case, "score", None),
-                    deepteam_reason=getattr(test_case, "reason", None),
+                    engine_score=getattr(test_case, "score", None),
+                    engine_reason=neutralize_source_value(
+                        getattr(test_case, "reason", None)
+                    ),
                     **scoring_contract,
                     metadata={
                         "seed": seed,
                         "variations": spec.variations,
                         "max_turns": spec.max_turns,
-                        "deepteam_version": "1.0.7",
+                        "engine_version": "1.0.7",
                     },
                     error=(
                         ErrorInfo(
                             code="CASE_ERROR",
-                            message="DeepTeam could not evaluate the dynamic probe",
+                            message="Dynamic test engine could not evaluate the dynamic probe",
                             case_id=f"t1-dynamic-{category}-{ordinal_start + offset:02d}",
-                            details={
-                                "deepteam_error": str(
-                                    context.sanitize_value(error_text)
-                                )
-                            },
+                            details={"stage": "dynamic_probe"},
                         )
                         if error_text
                         else None

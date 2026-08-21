@@ -144,10 +144,10 @@ def _mean(
     return _percent(sum(values) / len(values))
 
 
-def _build_task4_metrics(
+def _build_application_security_metrics(
     cases: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Summarize AgentDojo case-level metrics for direct display."""
+    """Summarize application security case-level metrics for direct display."""
 
     valid_attack_cases = [
         case
@@ -392,7 +392,7 @@ def build_task_view(
         ),
         "counts": counts,
         "categories": categories,
-        "agentdojo_metrics": (_build_task4_metrics(cases) if task.task_id == 4 else []),
+        "application_security_metrics": (_build_application_security_metrics(cases) if task.task_id == 4 else []),
         "cases": cases,
         # Failed / partial / invalid cases shown together on the page.
         "problems": problems,

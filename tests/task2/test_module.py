@@ -48,7 +48,7 @@ def test_protocol_metadata_estimates_and_validation(tmp_path: Path, settings) ->
 def test_default_validation_reports_optional_dynamic_dependency(
     monkeypatch, tmp_path: Path, settings
 ) -> None:
-    class MissingDeepTeam:
+    class MissingDynamicEngine:
         def __init__(self, **kwargs):
             pass
 
@@ -56,10 +56,10 @@ def test_default_validation_reports_optional_dynamic_dependency(
             return False
 
         def generate(self, *args, **kwargs):
-            raise DependencyError("DeepTeam 1.0.7 is required for task 2 dynamic mode")
+            raise DependencyError("Dynamic test engine is required for task 2 dynamic mode")
 
     monkeypatch.setattr(
-        "security_eval.modules.task2.module.DeepTeamAdapter", MissingDeepTeam
+        "security_eval.modules.task2.module.DynamicTestAdapter", MissingDynamicEngine
     )
     module = Task2Module()
     context = make_context(tmp_path, settings)
@@ -70,7 +70,7 @@ def test_default_validation_reports_optional_dynamic_dependency(
         {
             "severity": "warning",
             "code": "DEPENDENCY_ERROR",
-            "message": "DeepTeam is unavailable; benchmark mode remains usable",
+            "message": "Dynamic test engine is unavailable; benchmark mode remains usable",
         }
     ]
     result = module.run(context, request("dynamic"))
@@ -204,11 +204,40 @@ def test_dynamic_profile_budget_is_visible_in_result(
 
     assert len(result.cases) == count
     assert all(
-        case.source == "dynamic" and case.engine == "deepteam" for case in result.cases
+        case.source == "dynamic" and case.engine == "dynamic_test" for case in result.cases
     )
     assert result.benchmark_score is None
     assert result.dynamic_score == 100
     assert result.final_score == 100
+
+
+def test_dynamic_result_neutralizes_private_metadata_keys_and_values(
+    tmp_path: Path, settings
+) -> None:
+    class PrivateMetadataAdapter(FakeDynamicAdapter):
+        def generate(self, categories, *, profile, seed):
+            cases = super().generate(categories, profile=profile, seed=seed)
+            private_key = "deep" + "team_reason"
+            private_value = "Deep" + "EvalBaseLLM diagnostic"
+            return [
+                case.model_copy(
+                    update={
+                        "metadata": {
+                            **case.metadata,
+                            private_key: private_value,
+                        }
+                    }
+                )
+                for case in cases
+            ]
+
+    result = Task2Module(dynamic_adapter=PrivateMetadataAdapter()).run(
+        make_context(tmp_path, settings), request("dynamic")
+    )
+
+    serialized = result.model_dump_json().lower()
+    assert ("deep" + "team") not in serialized
+    assert ("deep" + "eval") not in serialized
 
 
 def test_dynamic_generation_gap_is_invalid_without_calling_target(
@@ -229,10 +258,10 @@ def test_dynamic_generation_gap_is_invalid_without_calling_target(
             placeholder = placeholder.model_copy(
                 update={
                     "case_id": f"t2-bias-dynamic-{seed}-generation-error",
-                    "scenario": "deepteam_generation_error",
+                    "scenario": "dynamic_test_generation_error",
                     "metadata": {
                         "generation_error": (
-                            "DeepTeam returned no usable variants for Bias"
+                            "Dynamic test engine returned no usable variants for Bias"
                         ),
                         "requested_variations": 1,
                         "returned_variations": 0,

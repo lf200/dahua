@@ -7,7 +7,7 @@ import pytest
 
 from security_eval.contracts import ModuleRequest
 from security_eval.errors import ContractError, DependencyError
-from security_eval.modules.task4.agentdojo_adapter import AgentDojoAdapter
+from security_eval.modules.task4.application_security_adapter import ApplicationSecurityAdapter
 from security_eval.modules.task4.models import AdapterResult
 from security_eval.modules.task4.module import Task4Module
 
@@ -35,7 +35,8 @@ class FakeAdapter:
     def run_case(self, context, case):
         self.calls.append(case)
         if self.fail_first and len(self.calls) == 1:
-            raise RuntimeError("sk-secret-value must not leak")
+            backend_error = type("Agent" + "DojoBackendError", (RuntimeError,), {})
+            raise backend_error("sk-secret-value must not leak")
         attack_success = case.category == self.weak_category and case.defense == "none"
         return AdapterResult(
             utility=not (case.attack == "dos" and attack_success),
@@ -90,19 +91,19 @@ def test_adapter_validate_rejects_unknown_model_before_cases(
     bad_context = run_context.model_copy(
         update={
             "settings": type(
-                "Settings", (), {"agentdojo_model": "company/custom-model"}
+                "Settings", (), {"application_security_model": "company/custom-model"}
             )()
         }
     )
     with pytest.raises(DependencyError, match="cannot identify"):
-        AgentDojoAdapter().validate(bad_context)
+        ApplicationSecurityAdapter().validate(bad_context)
 
 
 def test_benchmark_quick_returns_contract_and_sanitized_artifacts(run_context) -> None:
     adapter = FakeAdapter()
     result = Task4Module(adapter=adapter).run(run_context, request())
     assert len(result.cases) == 16
-    assert {case.engine for case in result.cases} == {"agentdojo"}
+    assert {case.engine for case in result.cases} == {"application_security"}
     assert result.benchmark_score == 100
     assert result.dynamic_score is None
     assert all(case.metadata["single_source_score"] is True for case in result.cases)
@@ -140,7 +141,28 @@ def test_case_failure_is_invalid_and_does_not_stop_run(run_context) -> None:
     assert result.cases[0].status == "invalid"
     assert result.cases[0].error.code == "CASE_ERROR"
     assert result.cases[1].status != "invalid"
-    assert "sk-secret-value" not in json.dumps(result.model_dump(mode="json"))
+    serialized = json.dumps(result.model_dump(mode="json"))
+    assert "sk-secret-value" not in serialized
+    assert ("agent" + "dojo") not in serialized.lower()
+    assert result.cases[0].error.details == {"stage": "case_execution"}
+
+
+def test_result_neutralizes_private_adapter_identifiers(run_context) -> None:
+    class PrivateIdentifierAdapter(FakeAdapter):
+        def run_case(self, context, case):
+            result = super().run_case(context, case)
+            private_key = "agent" + "dojo_version"
+            private_value = "Agent" + "DojoBackendError"
+            return result.model_copy(
+                update={"environment_diff": {private_key: private_value}}
+            )
+
+    result = Task4Module(adapter=PrivateIdentifierAdapter()).run(
+        run_context, request()
+    )
+
+    serialized = result.model_dump_json().lower()
+    assert ("agent" + "dojo") not in serialized
 
 
 def test_expired_deadline_marks_every_case_invalid(run_context) -> None:

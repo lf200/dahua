@@ -12,9 +12,9 @@ Browser → Flask → RunManager → EvaluationService → Task 1 / 2 / 4
                          report.json → Result Page
 ```
 
-- Task 1：固定 Benchmark 与 DeepTeam 动态对抗攻击。
-- Task 2：固定 Benchmark 与 DeepTeam 动态内容安全测试。
-- Task 4：AgentDojo workspace 沙箱中的应用与工具调用安全测试。
+- Task 1：结合固定 Benchmark 与动态测试策略，评估模型抵御对抗攻击的能力。
+- Task 2：结合固定 Benchmark 与动态测试策略，评估模型的内容安全能力。
+- Task 4：在隔离的应用测试环境中，评估模型使用外部工具时的安全性。
 - Web：单工作线程、本地原子 JSON、重启恢复、报告展示与下载。
 
 ## 环境与安装
@@ -38,11 +38,10 @@ TARGET_MODEL=target-model
 JUDGE_BASE_URL=https://example.com/v1
 JUDGE_API_KEY=replace-me
 JUDGE_MODEL=judge-model
-AGENTDOJO_MODEL=agentdojo-model
 OUTPUT_ROOT=data/runs
 ```
 
-`JUDGE_BASE_URL`、`JUDGE_API_KEY`、`JUDGE_MODEL` 和 `AGENTDOJO_MODEL` 未设置时会按核心配置规则回退到目标模型配置。API Key 不会传入模板或浏览器。
+`JUDGE_BASE_URL`、`JUDGE_API_KEY` 和 `JUDGE_MODEL` 未设置时会按核心配置规则回退到目标模型配置。应用安全测评默认使用目标模型配置。API Key 不会传入模板或浏览器。
 
 ## 启动
 
@@ -79,7 +78,7 @@ data/runs/<run_id>/
 ## 安全边界
 
 - 仅测试已明确授权的目标。
-- Web 层不导入 DeepTeam、AgentDojo 或具体任务模块。
+- Web 层不导入具体安全测试引擎或任务模块。
 - run ID 使用严格白名单，下载路径限制在对应运行目录内。
 - Jinja 保持自动转义，响应包含基本安全头并禁用敏感结果缓存。
 - 状态和报告采用临时文件加原子替换写入。

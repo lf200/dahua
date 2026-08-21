@@ -1,8 +1,8 @@
 """Flask application factory for the security evaluation web UI.
 
 The web layer depends only on the public EvaluationService interface and
-contract objects. It must not import Task1, Task2, Task4, DeepTeam, or
-AgentDojo implementation classes.
+contract objects. It must not import Task1, Task2, Task4, or
+specific engine implementation classes.
 
 Typical usage:
 

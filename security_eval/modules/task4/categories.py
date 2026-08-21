@@ -1,4 +1,4 @@
-"""Shared AgentDojo injection-task risk classification."""
+"""Shared application security engine injection-task risk classification."""
 
 from __future__ import annotations
 

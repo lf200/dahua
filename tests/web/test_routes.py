@@ -28,6 +28,7 @@ def test_index_and_secret_filter(app_factory):
     app = app_factory(
         public_settings={
             "target_model": "safe-model",
+            "application_security_model": "safe-application-model",
             "target_api_key": "SECRET-DO-NOT-SHOW",
         }
     )
@@ -36,6 +37,7 @@ def test_index_and_secret_filter(app_factory):
     assert "预计测试用例" in body
     assert "110" in body
     assert "safe-model" in body
+    assert "safe-application-model" in body
     assert "SECRET-DO-NOT-SHOW" not in body
 
 
@@ -91,6 +93,7 @@ def test_full_fake_flow_and_download(app_factory):
     assert "泄露率" in body
     assert "DoS 中断率" in body
     assert "防御效用损失" in body
+    assert 'class="application-security-metrics"' in body
     assert "发现的问题" in body and "无效" in body
     download = client.get(f"/runs/{run_id}/report.json")
     assert download.status_code == 200

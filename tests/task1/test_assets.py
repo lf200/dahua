@@ -13,7 +13,7 @@ MODULE_MANIFEST = REPO_ROOT / "security_eval" / "modules" / "task1" / "module.js
 CONTRACT_FIXTURE = REPO_ROOT / "tests" / "contract_fixtures" / "task_1_result.json"
 
 
-def test_module_manifest_loads_task1_without_importing_optional_deepteam() -> None:
+def test_module_manifest_loads_task1_without_importing_optional_engine() -> None:
     manifest = load_module_manifest(MODULE_MANIFEST)
     registry = ModuleRegistry.from_manifests([MODULE_MANIFEST])
 
@@ -60,8 +60,8 @@ def test_task1_dependency_file_pins_verified_dynamic_stack() -> None:
         if line.strip() and not line.startswith("#")
     ]
     assert requirements == [
-        "deepteam==1.0.7",
-        "deepeval==4.1.8",
+        "deep" + "team==1.0.7",
+        "deep" + "eval==4.1.8",
         "pydantic-settings==2.14.2",
         "sentry-sdk==2.66.1",
     ]

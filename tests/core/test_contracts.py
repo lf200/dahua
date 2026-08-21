@@ -30,6 +30,22 @@ def test_invalid_case_requires_error() -> None:
         )
 
 
+@pytest.mark.parametrize("engine", ["dynamic_test", "application_security"])
+def test_case_result_accepts_neutral_security_engines(engine: str) -> None:
+    case = CaseResult(
+        case_id=f"{engine}-1",
+        task_id=1,
+        source="dynamic",
+        engine=engine,
+        category="test",
+        scenario="neutral engine fixture",
+        status="passed",
+        reason="fixture passed",
+        duration_ms=0,
+    )
+    assert case.engine == engine
+
+
 def test_task_result_round_trip() -> None:
     now = datetime.now(timezone.utc)
     case = CaseResult(
@@ -64,3 +80,5 @@ def test_public_schema_contains_all_top_level_models() -> None:
     assert "RunReport" in schema["$defs"]
     assert "TaskResult" in schema["$defs"]
     assert "CaseResult" in schema["$defs"]
+    engine_values = schema["$defs"]["CaseResult"]["properties"]["engine"]["enum"]
+    assert engine_values == ["benchmark", "dynamic_test", "application_security", "fake"]

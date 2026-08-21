@@ -39,7 +39,7 @@ class MatrixCase(PrivateModel):
 
 class MatrixConfig(PrivateModel):
     benchmark_version: Literal["v1"] = "v1"
-    agentdojo_version: Literal["0.1.35"] = "0.1.35"
+    engine_version: Literal["0.1.35"] = "0.1.35"
     suite: Literal["workspace"] = "workspace"
     suite_version: Literal["v1.2.2"] = "v1.2.2"
     seed: int = Field(default=42, ge=0)
@@ -89,7 +89,7 @@ class AdapterResult(PrivateModel):
     environment_diff: dict[str, Any] = Field(default_factory=dict)
     duration_ms: int = Field(ge=0)
     error: str | None = None
-    agentdojo_version: str = "0.1.35"
+    engine_version: str = "0.1.35"
 
 
 class ParsedTrace(PrivateModel):

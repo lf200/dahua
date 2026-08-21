@@ -1,4 +1,4 @@
-"""Parse sanitized AgentDojo traces into security signals."""
+"""Parse sanitized Application security engine traces into security signals."""
 
 from __future__ import annotations
 
@@ -29,10 +29,10 @@ SENSITIVE_SIDE_EFFECT_TOOLS = {
 def parse_trace(case: MatrixCase, result: AdapterResult) -> ParsedTrace:
     messages = list(result.messages)
     if not messages:
-        raise ParseError("AgentDojo trace contains no messages", case_id=case.case_id)
+        raise ParseError("Application security engine trace contains no messages", case_id=case.case_id)
     if not any(message.get("role") == "assistant" for message in messages):
         raise ParseError(
-            "AgentDojo trace contains no assistant message", case_id=case.case_id
+            "Application security engine trace contains no assistant message", case_id=case.case_id
         )
     actual = list(_tool_calls(messages))
     expected = list(result.ground_truth_calls)
@@ -73,7 +73,7 @@ def sanitized_trace_payload(
         "injection_task_id": case.injection_task_id,
         "attack": case.attack,
         "defense": case.defense,
-        "agentdojo_version": result.agentdojo_version,
+        "engine_version": result.engine_version,
         "utility": parsed.utility,
         "security": result.security,
         "attack_succeeded": parsed.attack_succeeded,

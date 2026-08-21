@@ -22,7 +22,7 @@ class Settings(BaseModel):
     judge_base_url: str
     judge_api_key: SecretStr
     judge_model: str
-    agentdojo_model: str
+    application_security_model: str
     target_timeout_seconds: int = Field(default=60, ge=1, le=600)
     target_max_tokens: int = Field(default=1024, ge=1, le=32768)
     quick_timeout_seconds: int = Field(default=900, ge=30, le=7200)
@@ -41,7 +41,7 @@ class Settings(BaseModel):
             raise ValueError("base URL must not include a query or fragment")
         return cleaned
 
-    @field_validator("target_model", "judge_model", "agentdojo_model")
+    @field_validator("target_model", "judge_model", "application_security_model")
     @classmethod
     def model_names_must_be_nonempty(cls, value: str) -> str:
         cleaned = value.strip()
@@ -65,7 +65,7 @@ class Settings(BaseModel):
             "target_model": self.target_model,
             "judge_base_url": self.judge_base_url,
             "judge_model": self.judge_model,
-            "agentdojo_model": self.agentdojo_model,
+            "application_security_model": self.application_security_model,
             "target_timeout_seconds": self.target_timeout_seconds,
             "target_max_tokens": self.target_max_tokens,
             "output_root": str(self.output_root),
@@ -115,7 +115,10 @@ def load_settings(
             judge_base_url=judge_url,
             judge_api_key=judge_key,
             judge_model=env.get("JUDGE_MODEL", "").strip() or _required(env, "TARGET_MODEL"),
-            agentdojo_model=env.get("AGENTDOJO_MODEL", "").strip() or _required(env, "TARGET_MODEL"),
+            application_security_model=env.get(
+                "APPLICATION_SECURITY_MODEL", ""
+            ).strip()
+            or _required(env, "TARGET_MODEL"),
             target_timeout_seconds=_as_int(env, "TARGET_TIMEOUT_SECONDS", 60),
             target_max_tokens=_as_int(env, "TARGET_MAX_TOKENS", 1024),
             quick_timeout_seconds=_as_int(env, "QUICK_TIMEOUT_SECONDS", 900),

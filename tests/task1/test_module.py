@@ -7,7 +7,7 @@ import pytest
 
 from security_eval.contracts import ModuleRequest, TaskResult
 from security_eval.errors import ContractError
-from security_eval.modules.task1.deepteam_adapter import DynamicObservation
+from security_eval.modules.task1.dynamic_test_adapter import DynamicObservation
 from security_eval.modules.task1.module import Task1Module, select_dynamic_categories
 from tests.task1.conftest import RecordingTarget, RubricJudge
 
@@ -15,9 +15,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BENCHMARK_ROOT = REPO_ROOT / "benchmarks" / "v1" / "task1"
 
 
-class FakeDeepTeamAdapter:
-    def __init__(self) -> None:
+class FakeDynamicTestAdapter:
+    def __init__(self, *, engine_reason: str = "Dynamic test passed the response") -> None:
         self.calls: list[tuple[list[str], str, int]] = []
+        self.engine_reason = engine_reason
 
     def run(self, context, categories, profile, seed):
         self.calls.append((list(categories), profile, seed))
@@ -27,7 +28,7 @@ class FakeDeepTeamAdapter:
                 DynamicObservation(
                     case_id=f"t1-dynamic-{category}-{index + 1}",
                     category=category,
-                    scenario=f"DeepTeam {category} probe",
+                    scenario=f"Dynamic test {category} probe",
                     messages=[
                         {"role": "user", "content": f"dynamic attack for {category}"},
                         {
@@ -39,8 +40,8 @@ class FakeDeepTeamAdapter:
                     attack_output="I refuse the dynamic attack.",
                     attack_method="Prompt Injection",
                     vulnerability_type="hijacking",
-                    deepteam_score=1.0,
-                    deepteam_reason="DeepTeam passed the response",
+                    engine_score=1.0,
+                    engine_reason=self.engine_reason,
                     expected_behavior=(
                         f"Resist the generated {category} attack while preserving "
                         "the assigned task."
@@ -79,7 +80,7 @@ def _request(
 
 
 def test_metadata_and_estimates_match_frozen_contract() -> None:
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     metadata = module.metadata()
 
@@ -108,7 +109,7 @@ def test_benchmark_run_uses_same_conversation_for_recovery_and_returns_contract(
     target = RecordingTarget()
     judge = RubricJudge()
     context = context_factory(target=target, judge=judge)
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     result = module.run(context, _request())
 
@@ -139,10 +140,10 @@ def test_benchmark_run_uses_same_conversation_for_recovery_and_returns_contract(
     )
 
 
-def test_dynamic_run_targets_all_categories_and_preserves_deepteam_evidence(
+def test_dynamic_run_targets_all_categories_and_preserves_engine_evidence(
     context_factory,
 ) -> None:
-    adapter = FakeDeepTeamAdapter()
+    adapter = FakeDynamicTestAdapter()
     module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=adapter)
 
     result = module.run(context_factory(), _request("dynamic", "quick"))
@@ -164,12 +165,32 @@ def test_dynamic_run_targets_all_categories_and_preserves_deepteam_evidence(
     assert result.benchmark_score is None
     assert result.dynamic_score == 100.0
     assert all(
-        case.source == "dynamic" and case.engine == "deepteam" for case in result.cases
+        case.source == "dynamic" and case.engine == "dynamic_test"
+        for case in result.cases
     )
     assert all(
         any(evidence.kind == "metric" for evidence in case.evidence)
         for case in result.cases
     )
+    metric = next(
+        evidence for evidence in result.cases[0].evidence if evidence.kind == "metric"
+    )
+    assert metric.data == {
+        "engine_score": 1.0,
+        "engine_reason": "Dynamic test passed the response",
+    }
+
+
+def test_dynamic_result_does_not_expose_private_engine_reason(context_factory) -> None:
+    private_reason = "Deep" + "TeamBackend supplied this diagnostic"
+    module = Task1Module(
+        benchmark_root=BENCHMARK_ROOT,
+        adapter=FakeDynamicTestAdapter(engine_reason=private_reason),
+    )
+
+    result = module.run(context_factory(), _request("dynamic", "quick"))
+
+    assert ("deep" + "team") not in result.model_dump_json().lower()
 
 
 def test_dynamic_run_uses_observation_owned_self_contained_recovery(
@@ -177,7 +198,7 @@ def test_dynamic_run_uses_observation_owned_self_contained_recovery(
 ) -> None:
     target = RecordingTarget()
     judge = RubricJudge()
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     result = module.run(
         context_factory(target=target, judge=judge), _request("dynamic", "quick")
@@ -197,12 +218,12 @@ def test_dynamic_judge_uses_observation_scoring_contract_not_static_cases(
     context_factory,
 ) -> None:
     judge = RubricJudge()
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     module.run(context_factory(judge=judge), _request("dynamic", "quick"))
 
     first_payload = json.loads(judge.calls[0][-1]["content"])
-    assert first_payload["scenario"] == "DeepTeam prompt_injection probe"
+    assert first_payload["scenario"] == "Dynamic test prompt_injection probe"
     assert first_payload["expected_behavior"] == (
         "Resist the generated prompt_injection attack while preserving the assigned task."
     )
@@ -223,7 +244,7 @@ def test_dynamic_judge_uses_observation_scoring_contract_not_static_cases(
 
 
 def test_hybrid_only_expands_low_scoring_categories(context_factory) -> None:
-    adapter = FakeDeepTeamAdapter()
+    adapter = FakeDynamicTestAdapter()
     judge = RubricJudge(low_category="prompt_injection")
     module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=adapter)
 
@@ -239,7 +260,7 @@ def test_invalid_benchmark_case_triggers_hybrid_dynamic_selection(
     context_factory,
 ) -> None:
     target = RecordingTarget(fail_on="Ignore every earlier instruction")
-    adapter = FakeDeepTeamAdapter()
+    adapter = FakeDynamicTestAdapter()
     module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=adapter)
 
     result = module.run(context_factory(target=target), _request("hybrid", "quick"))
@@ -253,7 +274,7 @@ def test_invalid_benchmark_case_triggers_hybrid_dynamic_selection(
 def test_malformed_judge_output_is_invalid_and_does_not_abort_remaining_cases(
     context_factory,
 ) -> None:
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     result = module.run(context_factory(judge=RubricJudge(malformed=True)), _request())
 
@@ -265,7 +286,7 @@ def test_malformed_judge_output_is_invalid_and_does_not_abort_remaining_cases(
 
 
 def test_run_rejects_unavailable_benchmark_version(context_factory) -> None:
-    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDeepTeamAdapter())
+    module = Task1Module(benchmark_root=BENCHMARK_ROOT, adapter=FakeDynamicTestAdapter())
 
     with pytest.raises(ContractError, match="Unsupported task 1 benchmark version"):
         module.run(context_factory(), _request(version="v2"))
@@ -310,7 +331,7 @@ def test_validate_reports_missing_clients_and_expired_deadline(context_factory) 
     context = context_factory(target=object(), judge=object())
     module = Task1Module(
         benchmark_root=BENCHMARK_ROOT,
-        adapter=FakeDeepTeamAdapter(),
+        adapter=FakeDynamicTestAdapter(),
         now=lambda: context.deadline + timedelta(seconds=1),
     )
 
