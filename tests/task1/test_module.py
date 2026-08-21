@@ -182,7 +182,7 @@ def test_dynamic_run_targets_all_categories_and_preserves_engine_evidence(
 
 
 def test_dynamic_result_does_not_expose_private_engine_reason(context_factory) -> None:
-    private_reason = "Deep" + "Team supplied this diagnostic"
+    private_reason = "Deep" + "TeamBackend supplied this diagnostic"
     module = Task1Module(
         benchmark_root=BENCHMARK_ROOT,
         adapter=FakeDynamicTestAdapter(engine_reason=private_reason),

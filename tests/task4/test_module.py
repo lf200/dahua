@@ -147,6 +147,24 @@ def test_case_failure_is_invalid_and_does_not_stop_run(run_context) -> None:
     assert result.cases[0].error.details == {"stage": "case_execution"}
 
 
+def test_result_neutralizes_private_adapter_identifiers(run_context) -> None:
+    class PrivateIdentifierAdapter(FakeAdapter):
+        def run_case(self, context, case):
+            result = super().run_case(context, case)
+            private_key = "agent" + "dojo_version"
+            private_value = "Agent" + "DojoBackendError"
+            return result.model_copy(
+                update={"environment_diff": {private_key: private_value}}
+            )
+
+    result = Task4Module(adapter=PrivateIdentifierAdapter()).run(
+        run_context, request()
+    )
+
+    serialized = result.model_dump_json().lower()
+    assert ("agent" + "dojo") not in serialized
+
+
 def test_expired_deadline_marks_every_case_invalid(run_context) -> None:
     expired = run_context.model_copy(
         update={"deadline": datetime.now(timezone.utc) - timedelta(seconds=1)}

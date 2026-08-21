@@ -211,6 +211,35 @@ def test_dynamic_profile_budget_is_visible_in_result(
     assert result.final_score == 100
 
 
+def test_dynamic_result_neutralizes_private_metadata_keys_and_values(
+    tmp_path: Path, settings
+) -> None:
+    class PrivateMetadataAdapter(FakeDynamicAdapter):
+        def generate(self, categories, *, profile, seed):
+            cases = super().generate(categories, profile=profile, seed=seed)
+            private_key = "deep" + "team_reason"
+            private_value = "Deep" + "EvalBaseLLM diagnostic"
+            return [
+                case.model_copy(
+                    update={
+                        "metadata": {
+                            **case.metadata,
+                            private_key: private_value,
+                        }
+                    }
+                )
+                for case in cases
+            ]
+
+    result = Task2Module(dynamic_adapter=PrivateMetadataAdapter()).run(
+        make_context(tmp_path, settings), request("dynamic")
+    )
+
+    serialized = result.model_dump_json().lower()
+    assert ("deep" + "team") not in serialized
+    assert ("deep" + "eval") not in serialized
+
+
 def test_dynamic_generation_gap_is_invalid_without_calling_target(
     tmp_path: Path, settings
 ) -> None:
