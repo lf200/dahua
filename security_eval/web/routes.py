@@ -48,7 +48,7 @@ PUBLIC_SETTING_KEYS = frozenset(
         "target_model",
         "judge_base_url",
         "judge_model",
-        "agentdojo_model",
+        "application_security_model",
         "target_timeout_seconds",
         "target_max_tokens",
         "output_root",

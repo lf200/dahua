@@ -8,16 +8,16 @@
 .estimate-panel>div{display:grid;gap:3px}
 .estimate-label{color:var(--muted);font-size:12px;font-weight:800;letter-spacing:.12em}
 .estimate-panel strong{font-size:34px;line-height:1;color:var(--teal)}
-.estimate-panel dl,.agentdojo-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
-.estimate-panel dl div,.agentdojo-metrics div{min-width:0;padding:10px;border-radius:9px;background:white}
-.estimate-panel dt,.agentdojo-metrics dt{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
-.estimate-panel dd,.agentdojo-metrics dd{margin:0;font-weight:800;overflow-wrap:anywhere}
-.agentdojo-metrics{grid-template-columns:repeat(2,minmax(0,1fr));margin:14px 0 16px}
-.agentdojo-metrics div{background:#f8fbf9}
+.estimate-panel dl,.application-security-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}
+.estimate-panel dl div,.application-security-metrics div{min-width:0;padding:10px;border-radius:9px;background:white}
+.estimate-panel dt,.application-security-metrics dt{font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.estimate-panel dd,.application-security-metrics dd{margin:0;font-weight:800;overflow-wrap:anywhere}
+.application-security-metrics{grid-template-columns:repeat(2,minmax(0,1fr));margin:14px 0 16px}
+.application-security-metrics div{background:#f8fbf9}
 .task-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 .task-card{min-width:0}
 .metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
 .metrics div{min-width:0}
 .metrics dt,.metrics dd{overflow-wrap:anywhere}
 @media(max-width:850px){.task-grid{grid-template-columns:1fr}}
-@media(max-width:850px){.estimate-panel,.estimate-panel dl,.agentdojo-metrics{grid-template-columns:1fr}}
+@media(max-width:850px){.estimate-panel,.estimate-panel dl,.application-security-metrics{grid-template-columns:1fr}}
