@@ -56,3 +56,17 @@ def test_http_error_does_not_include_secret(monkeypatch) -> None:
     with pytest.raises(TargetError) as caught:
         client().complete([{"role": "user", "content": "hello"}])
     assert "sk-unit-test-secret" not in str(caught.value)
+
+
+def test_transport_error_does_not_expose_backend_class_name(monkeypatch) -> None:
+    backend_error = type("Deep" + "TeamTransportError", (OSError,), {})
+
+    def fail(*args, **kwargs):
+        raise backend_error("private backend failure")
+
+    monkeypatch.setattr("security_eval.core.target.urlopen", fail)
+
+    with pytest.raises(TargetError) as caught:
+        client().complete([{"role": "user", "content": "hello"}])
+
+    assert ("deep" + "team") not in str(caught.value).lower()

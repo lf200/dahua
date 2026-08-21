@@ -276,7 +276,7 @@ class Task4Module:
                     exc = CaseEvaluationError(
                         "Task 4 case execution failed",
                         case_id=case.case_id,
-                        details={"exception_type": type(exc).__name__},
+                        details={"stage": "case_execution"},
                     )
                 results.append(self._invalid_case(context, case, source, exc))
         return results

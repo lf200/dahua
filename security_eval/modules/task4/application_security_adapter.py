@@ -122,7 +122,7 @@ class ApplicationSecurityAdapter:
                 ) from None
             if isinstance(exc, openai.APIError):
                 raise TargetError(
-                    f"Application security engine target request failed: {type(exc).__name__}",
+                    "Application security engine target request failed",
                     case_id=case.case_id,
                 ) from None
             raise

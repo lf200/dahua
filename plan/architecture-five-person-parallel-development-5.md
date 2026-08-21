@@ -21,9 +21,9 @@ tags: [architecture, parallel-development, integration, dynamic_test, applicatio
 - **REQ-001**: 五个工作包必须拥有互斥的源文件目录；除开发者 A 外，任何人不得修改 `security_eval/core/`，除开发者 E 外，任何人不得修改 `security_eval/web/`。
 - **REQ-002**: 任务 1、2、4 模块必须实现同一个 `EvaluationModule` Protocol，且只能通过 `ModuleRequest`、`RunContext`、`TaskResult` 与核心层交互。
 - **REQ-003**: 统一契约必须使用 Pydantic v2，固定 `contract_version="1.0"`，所有结果在写盘、模块返回和页面加载时各校验一次。
-- **REQ-004**: 任务 1 模块同时交付 20 个固定 Benchmark 用例和 DynamicTest 动态攻击；任务 2 模块同时交付 24 个固定 Benchmark 用例和 DynamicTest 动态攻击。
-- **REQ-005**: 任务 4 模块的固定与动态测试全部使用 ApplicationSecurity `workspace` 沙箱，交付固定矩阵、动态组合、trace 解析和防御前后指标。
-- **REQ-006**: Flask/Web 层不得导入 DynamicTest、ApplicationSecurity 或任务模块内部类；它只能调用核心 `EvaluationService` 并渲染 `RunReport`。
+- **REQ-004**: 任务 1 模块同时交付 20 个固定 Benchmark 用例和 动态测试适配器 动态攻击；任务 2 模块同时交付 24 个固定 Benchmark 用例和 动态测试适配器 动态攻击。
+- **REQ-005**: 任务 4 模块的固定与动态测试全部使用 应用安全适配器 `workspace` 沙箱，交付固定矩阵、动态组合、trace 解析和防御前后指标。
+- **REQ-006**: Flask/Web 层不得导入 动态测试适配器、应用安全适配器 或任务模块内部类；它只能调用核心 `EvaluationService` 并渲染 `RunReport`。
 - **REQ-007**: 三个任务模块不得导入 Flask、Jinja、routes、storage 或 report；模块只允许把中间证据写到 `RunContext.artifact_dir/task_<id>/`。
 - **REQ-008**: 每个任务模块必须提供 `tests/contract_fixtures/task_<id>_result.json`，内容同时覆盖通过、失败和 invalid 用例，使 Web 开发者无需真实模型即可开发。
 - **REQ-009**: 每个任务模块必须提供 `module.json`，声明 `task_id`、模块导入路径、类名、依赖文件、Benchmark 版本、支持的 mode/profile 和契约版本；核心通过注册表加载，不硬编码模块内部实现。
@@ -34,7 +34,7 @@ tags: [architecture, parallel-development, integration, dynamic_test, applicatio
 - **REQ-014**: Benchmark 总清单不允许多人编辑；B/C/D 分别维护自己的 `benchmarks/v1/taskN/manifest.yaml`，A 使用 `scripts/build_benchmark_manifest.py` 生成只读总清单。
 - **REQ-015**: 所有单元测试必须使用 mock 或 fixture，禁止默认调用真实模型；真实网络 smoke test 只在最终集成阶段由 A 统一执行。
 - **SEC-001**: 统一契约中的输入、输出和 evidence 在返回前必须调用核心 `sanitize_value()`；任务模块不得自行记录 `.env`、API Key、Bearer Token 或完整系统提示词。
-- **SEC-002**: ApplicationSecurity 模块只能访问其 run artifact 目录和内置沙箱；不得向 Web 层暴露可执行工具对象或真实外部连接。
+- **SEC-002**: 应用安全适配器 模块只能访问其 run artifact 目录和内置沙箱；不得向 Web 层暴露可执行工具对象或真实外部连接。
 - **SEC-003**: 所有模块的错误必须转换为 `ErrorInfo`，禁止把带环境变量、路径外信息或第三方完整堆栈的异常直接显示到页面。
 - **CON-001**: 五人使用独立 Git 分支和 Pull Request；一个文件只能有一个明确 owner，禁止在集成前互相 cherry-pick 未完成提交。
 - **CON-002**: 七天内不实现前后端分离、数据库、Redis/Celery、Docker/Kubernetes 或生产部署；Flask 使用本地文件保存运行状态。
@@ -93,22 +93,22 @@ class EvaluationModule(Protocol):
 
 ### Implementation Phase 2 — 开发者 B：任务 1 对抗攻击模块
 
-- **GOAL-002**: 独立交付任务 1 的静态 Benchmark、DynamicTest 动态测试、三维评分和契约 fixture。
+- **GOAL-002**: 独立交付任务 1 的静态 Benchmark、动态测试适配器 动态测试、三维评分和契约 fixture。
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
 | TASK-008 | 创建 `benchmarks/v1/task1/cases.jsonl`、`labels.yaml` 和 `manifest.yaml`；包含提示注入、间接提示、角色越狱、逻辑陷阱、上下文劫持各 4 个用例，固定 quick/full 子集与恢复探针。 |  |  |
-| TASK-009 | 创建 `security_eval/modules/task1/module.py` 的 `Task1Module`，实现四个 Protocol 方法；benchmark 模式运行固定 messages，dynamic 模式调用 DynamicTest，hybrid 模式只扩展静态低分类别。 |  |  |
+| TASK-009 | 创建 `security_eval/modules/task1/module.py` 的 `Task1Module`，实现四个 Protocol 方法；benchmark 模式运行固定 messages，dynamic 模式调用 动态测试适配器，hybrid 模式只扩展静态低分类别。 |  |  |
 | TASK-010 | 创建 `security_eval/modules/task1/dynamic_test_adapter.py`；封装 PromptInjection、IndirectInstruction、Roleplay、Robustness、LinearJailbreaking，所有第三方对象只存在于本目录。 |  |  |
 | TASK-011 | 创建 `security_eval/modules/task1/scoring.py`；按识别 30%、阻断 50%、恢复 20% 计算 0–100，输出三个子分和同会话恢复证据。 |  |  |
 | TASK-012 | 创建 `security_eval/modules/task1/module.json`、`requirements/task1.in`、`HANDOFF.md` 和 `tests/contract_fixtures/task_1_result.json`。 |  |  |
-| TASK-013 | 创建 `tests/task1/`；mock 目标和 DynamicTest，验证 20 个 case、quick 子集、动态变体、多轮 3/5 上限、错误隔离、契约校验和脱敏。 |  |  |
+| TASK-013 | 创建 `tests/task1/`；mock 目标和 动态测试适配器，验证 20 个 case、quick 子集、动态变体、多轮 3/5 上限、错误隔离、契约校验和脱敏。 |  |  |
 
-开发者 B 完成标准：`Task1Module.run()` 只返回 TaskResult；fixture 同时含 passed/failed/invalid；`pytest tests/task1 -q` 返回 0；B 不导入 Flask/ApplicationSecurity，不修改 core。
+开发者 B 完成标准：`Task1Module.run()` 只返回 TaskResult；fixture 同时含 passed/failed/invalid；`pytest tests/task1 -q` 返回 0；B 不导入 Flask/应用安全适配器，不修改 core。
 
 ### Implementation Phase 3 — 开发者 C：任务 2 内容安全模块
 
-- **GOAL-003**: 独立交付任务 2 的静态 Benchmark、DynamicTest 动态测试、三维内容评分和契约 fixture。
+- **GOAL-003**: 独立交付任务 2 的静态 Benchmark、动态测试适配器 动态测试、三维内容评分和契约 fixture。
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
@@ -119,11 +119,11 @@ class EvaluationModule(Protocol):
 | TASK-018 | 创建 `security_eval/modules/task2/module.json`、`requirements/task2.in`、`HANDOFF.md` 和 `tests/contract_fixtures/task_2_result.json`。 |  |  |
 | TASK-019 | 创建 `tests/task2/`；验证 24 个 case、quick 子集、三种 expected_action、动态变体、过度拒绝、invalid、契约和脱敏。 |  |  |
 
-开发者 C 完成标准：`pytest tests/task2 -q` 返回 0；fixture 能展示合规拒绝、不安全回答、过度拒绝和 invalid；C 不导入 Flask/ApplicationSecurity，不修改 core。
+开发者 C 完成标准：`pytest tests/task2 -q` 返回 0；fixture 能展示合规拒绝、不安全回答、过度拒绝和 invalid；C 不导入 Flask/应用安全适配器，不修改 core。
 
-### Implementation Phase 4 — 开发者 D：任务 4 ApplicationSecurity 应用安全模块
+### Implementation Phase 4 — 开发者 D：任务 4 应用安全适配器 应用安全模块
 
-- **GOAL-004**: 独立交付 ApplicationSecurity 固定 Benchmark、动态组合、沙箱 trace 指标和契约 fixture。
+- **GOAL-004**: 独立交付 应用安全适配器 固定 Benchmark、动态组合、沙箱 trace 指标和契约 fixture。
 
 | Task | Description | Completed | Date |
 |------|-------------|-----------|------|
@@ -132,9 +132,9 @@ class EvaluationModule(Protocol):
 | TASK-022 | 创建 `security_eval/modules/task4/application_security_adapter.py`；每个 case 新建沙箱，所有日志写 `artifact_dir/task_4/`，禁止暴露第三方 pipeline 对象。 |  |  |
 | TASK-023 | 创建 `security_eval/modules/task4/trace_parser.py` 和 `scoring.py`；通过 environment diff、ground-truth 工具序列和 trace 计算 Utility、UUA、ASR、未授权工具调用率、泄露率、DoS 中断率和防御 utility loss。 |  |  |
 | TASK-024 | 创建 `security_eval/modules/task4/module.json`、`requirements/task4.in`、`HANDOFF.md` 和 `tests/contract_fixtures/task_4_result.json`。 |  |  |
-| TASK-025 | 创建 `tests/task4/`；使用固定 ApplicationSecurity 日志 fixture 验证布尔方向、沙箱重置、异常 invalid、trace 路径、防御对比和契约。 |  |  |
+| TASK-025 | 创建 `tests/task4/`；使用固定 应用安全适配器 日志 fixture 验证布尔方向、沙箱重置、异常 invalid、trace 路径、防御对比和契约。 |  |  |
 
-开发者 D 完成标准：`pytest tests/task4 -q` 返回 0；任务 4 engine 只为 application_security；fixture 含 baseline/attack/defense/DoS；D 不导入 Flask/DynamicTest，不修改 core。
+开发者 D 完成标准：`pytest tests/task4 -q` 返回 0；任务 4 engine 只为 application_security；fixture 含 baseline/attack/defense/DoS；D 不导入 Flask/动态测试适配器，不修改 core。
 
 ### Implementation Phase 5 — 开发者 E：Flask、存储、报告与演示
 
@@ -144,12 +144,12 @@ class EvaluationModule(Protocol):
 |------|-------------|-----------|------|
 | TASK-026 | 创建 `app.py`、`security_eval/web/app.py` 和 `routes.py`；实现 GET `/`、POST `/runs`、GET `/runs/<id>`、GET `/api/runs/<id>`、GET `/runs/<id>/report.json`，只调用 EvaluationService 公共方法。 |  |  |
 | TASK-027 | 创建 `security_eval/web/storage.py`；实现 run_id 白名单、原子 status/report JSON、重启恢复、单运行锁和 artifact 下载边界。 |  |  |
-| TASK-028 | 创建 `security_eval/web/presentation.py`；把 RunReport 转换为只读 ViewModel，显示静态/动态/综合分、类别、风险、ApplicationSecurity 指标、失败证据和 invalid，不重新评分。 |  |  |
+| TASK-028 | 创建 `security_eval/web/presentation.py`；把 RunReport 转换为只读 ViewModel，显示静态/动态/综合分、类别、风险、应用安全适配器 指标、失败证据和 invalid，不重新评分。 |  |  |
 | TASK-029 | 创建 `security_eval/web/templates/` 和 `static/style.css`；使用服务端 Jinja、少量轮询 JavaScript和响应式单列页面，不引入 Node/npm/CDN。 |  |  |
 | TASK-030 | 创建 `tests/web/`；逐个加载 task_1/2/4 fixture 与三者组合 fixture，验证所有页面、404、授权、HTML 转义、密钥不展示、JSON 下载和 partial。 |  |  |
 | TASK-031 | 创建 `tests/e2e/`、`requirements/web.in`、`HANDOFF.md`、`README.md` 和 `docs/demo-script.md`；fake service 下完成首页→运行→进度→报告→下载全流程。 |  |  |
 
-开发者 E 完成标准：在没有安装 DynamicTest/ApplicationSecurity、没有 API Key 时，使用 fixtures 即可启动和演示全部页面；`pytest tests/web tests/e2e -q` 返回 0；E 不修改任何任务模块。
+开发者 E 完成标准：在没有安装 动态测试适配器/应用安全适配器、没有 API Key 时，使用 fixtures 即可启动和演示全部页面；`pytest tests/web tests/e2e -q` 返回 0；E 不修改任何任务模块。
 
 ### Implementation Phase 6 — 无冲突合并与契约验收
 
@@ -186,9 +186,9 @@ class EvaluationModule(Protocol):
 ## 4. Dependencies
 
 - **DEP-001**: 开发者 A 的 `contracts.py` 和 JSON Schema 必须在首日前 4 小时冻结；B/C/D/E 后续只依赖这一稳定版本。
-- **DEP-002**: Python 3.11、Pydantic v2、Flask 3.x、DynamicTest 1.0.7、ApplicationSecurity 0.1.35、pytest、jsonschema、PyYAML。
+- **DEP-002**: Python 3.11、Pydantic v2、Flask 3.x、pytest、jsonschema、PyYAML，以及 `requirements/` 中按任务固定的私有适配器依赖。
 - **DEP-003**: Git 分支保护或团队纪律必须确保目录 owner 规则；没有 owner 审核的跨目录修改不得合并。
-- **DEP-004**: 最终真实 smoke 需要授权目标模型、裁判模型和 ApplicationSecurity 支持的模型配置，单元测试不依赖这些外部资源。
+- **DEP-004**: 最终真实 smoke 需要授权目标模型、裁判模型和 应用安全适配器 支持的模型配置，单元测试不依赖这些外部资源。
 
 ## 5. Files
 
@@ -208,7 +208,7 @@ class EvaluationModule(Protocol):
 - **TEST-005**: 注册表测试：缺失模块、重复 task_id、错误类名、错误契约版本和模块导入异常均转为标准错误。
 - **TEST-006**: 结果兼容测试：三个 fixture 分别和组合后均生成 RunReport，总体分不修改 TaskResult，invalid 不进入有效分母。
 - **TEST-007**: Benchmark 集成测试：三个子 manifest 独立校验，总 manifest 可生成，任何题库文件修改都会改变哈希并导致旧清单验证失败。
-- **TEST-008**: Hybrid 快速测试：任务 1/2 静态低分类别触发 DynamicTest 补测，任务 4 由 ApplicationSecurity 补测，最终 report 保留两个来源。
+- **TEST-008**: Hybrid 快速测试：任务 1/2 静态低分类别触发 动态测试适配器 补测，任务 4 由 应用安全适配器 补测，最终 report 保留两个来源。
 - **TEST-009**: 故障隔离测试：任一模块抛出 timeout/parse/case 错误时另外两个模块继续，Web 显示 partial 和对应 owner/module_version。
 - **TEST-010**: 最终端到端测试：授权目标 hybrid+quick 从 Flask 启动，轮询完成、查看三个任务、下载 JSON，全流程不手工改数据。
 
@@ -216,8 +216,8 @@ class EvaluationModule(Protocol):
 
 - **RISK-001**: “完全零依赖”不现实，五人至少依赖首日冻结的契约；通过 4 小时契约门和 fixture 将依赖限制为稳定数据接口。
 - **RISK-002**: 开发者 A 可能成为瓶颈；A 第一优先级是契约、fake 和 registry，真实网络适配及优化后置。
-- **RISK-003**: D 的 ApplicationSecurity 工作量可能最大；限制为官方 workspace 子集，先完成固定 Benchmark，再实现动态未覆盖组合。
-- **RISK-004**: B/C 同时使用 DynamicTest 可能复制适配代码；本周期允许各自封装，集成前不抽共享库，避免过早共享导致冲突；赛后再重构。
+- **RISK-003**: D 的应用安全适配器工作量可能最大；限制为已验证的 `workspace` 子集，先完成固定 Benchmark，再实现动态未覆盖组合。
+- **RISK-004**: B/C 同时使用 动态测试适配器 可能复制适配代码；本周期允许各自封装，集成前不抽共享库，避免过早共享导致冲突；赛后再重构。
 - **RISK-005**: 各 fixture 与真实结果可能漂移；每个模块的 contract test 必须用同一个 TaskResult 模型生成 fixture，禁止手写不校验 JSON。
 - **ASSUMPTION-001**: 五人能使用独立分支并遵守 owner 目录；A 担任集成负责人但不替其他 owner 修改代码。
 - **ASSUMPTION-002**: 每位开发者都能运行 Python 3.11 与自己工作包的单元测试。

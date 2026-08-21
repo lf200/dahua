@@ -153,27 +153,26 @@ git commit -m "refactor(task1): neutralize dynamic testing adapter"
 **Interfaces:**
 - Produces: `DynamicTestAPI` and `DynamicTestAdapter`
 - Produces: `Task2Case.engine: Literal["benchmark", "dynamic_test"]`
-- Produces: dynamic provenance with `dataset="DynamicTest"` and a neutral internal source description
+- Preserves the upstream Task 2 `Task2Case` shape without reintroducing the removed provenance model
 
 - [ ] **Step 1: Rename the adapter test and add neutral generated-case assertions**
 
 ```python
-def test_generated_case_uses_neutral_engine_and_provenance(fake_api) -> None:
+def test_generated_case_uses_neutral_engine(fake_api) -> None:
     adapter = DynamicTestAdapter(api_loader=lambda: fake_api)
     cases = adapter.generate(["hate"], "quick", 7)
     assert cases[0].engine == "dynamic_test"
-    assert cases[0].provenance.dataset == "DynamicTest"
 ```
 
 - [ ] **Step 2: Run Task 2 tests and verify the old interfaces fail**
 
 Run: `pytest tests/task2 tests/core/test_contracts.py -q`
 
-Expected: FAIL until imports, literals, provenance, errors, and fixtures use the neutral names.
+Expected: FAIL until imports, literals, errors, and fixtures use the neutral names.
 
 - [ ] **Step 3: Implement the Task 2 rename without changing generation behavior**
 
-Alias third-party imported types locally, preserve lazy import and telemetry opt-out, and replace all first-party class names, variables, scenarios, errors, provenance labels, URLs, and prose that identify the implementation source.
+Alias third-party imported types locally, preserve lazy import and telemetry opt-out, and replace all first-party class names, variables, scenarios, errors, URLs, and prose that identify the implementation source. Keep the upstream provenance-free Task 2 model intact.
 
 - [ ] **Step 4: Run Task 2 tests**
 

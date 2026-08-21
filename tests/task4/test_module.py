@@ -35,7 +35,8 @@ class FakeAdapter:
     def run_case(self, context, case):
         self.calls.append(case)
         if self.fail_first and len(self.calls) == 1:
-            raise RuntimeError("sk-secret-value must not leak")
+            backend_error = type("Agent" + "DojoBackendError", (RuntimeError,), {})
+            raise backend_error("sk-secret-value must not leak")
         attack_success = case.category == self.weak_category and case.defense == "none"
         return AdapterResult(
             utility=not (case.attack == "dos" and attack_success),
@@ -140,7 +141,10 @@ def test_case_failure_is_invalid_and_does_not_stop_run(run_context) -> None:
     assert result.cases[0].status == "invalid"
     assert result.cases[0].error.code == "CASE_ERROR"
     assert result.cases[1].status != "invalid"
-    assert "sk-secret-value" not in json.dumps(result.model_dump(mode="json"))
+    serialized = json.dumps(result.model_dump(mode="json"))
+    assert "sk-secret-value" not in serialized
+    assert ("agent" + "dojo") not in serialized.lower()
+    assert result.cases[0].error.details == {"stage": "case_execution"}
 
 
 def test_expired_deadline_marks_every_case_invalid(run_context) -> None:

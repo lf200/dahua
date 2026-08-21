@@ -356,8 +356,8 @@ class Task1Module:
                         kind="metric",
                         summary="Dynamic test engine evaluation result",
                         data={
-                            "score": observation.engine_score,
-                            "reason": observation.engine_reason,
+                            "engine_score": observation.engine_score,
+                            "engine_reason": observation.engine_reason,
                         },
                     ),
                     Evidence(

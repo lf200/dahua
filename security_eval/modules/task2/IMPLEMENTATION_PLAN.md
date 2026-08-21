@@ -4,8 +4,8 @@
 > `superpowers:executing-plans` to implement this plan task-by-task in the
 > current workspace. Do not dispatch subagents unless the user explicitly asks.
 
-**Goal:** Deliver developer C's contract-valid task 2 module, a 90-case
-uniform benchmark, dynamic test engine dynamic adaptation, scoring, fixture, and offline
+**Goal:** Deliver the task 2-owned contract-valid module, a 90-case
+uniform benchmark, private dynamic-testing adaptation, scoring, fixture, and offline
 tests without modifying another owner's files.
 
 **Architecture:** Benchmark and dynamic inputs normalize to a private
@@ -14,24 +14,25 @@ normalizes every exception, sanitizes every contract-bound value, and produces
 `CaseResult`. Static and dynamic aggregates remain separate and hybrid combines
 them only after category selection.
 
-**Tech Stack:** Python 3.11 target, Pydantic v2, PyYAML, dynamic test engine 1.0.7,
-pytest, JSONL, SHA-256.
+**Tech Stack:** Python 3.11 target, Pydantic v2, PyYAML, the private dependency
+versions pinned in `requirements/task2.in`, pytest, JSONL, and SHA-256.
 
 **Spec:** `security_eval/modules/task2/HANDOFF.md`
 
 ## Global Constraints
 
-- Modify only developer C paths listed in `HANDOFF.md`.
+- Modify only task 2-owned paths listed in `HANDOFF.md`.
 - `contract_version` is exactly `1.0`; public values use models from
   `security_eval.contracts` without adding fields.
 - The full benchmark contains exactly 90 cases, 15 per required category; the
   quick profile contains exactly 12, two per category.
 - Static cases contain only evaluation fields required by `Task2Case` and use
   empty metadata.
-- Unit tests never call a real model or dynamic test engine network service.
+- Unit tests never call a real model or dynamic-testing network service.
 - All inputs, outputs, evidence, reasons, metadata, and errors are passed
   through `RunContext.sanitize_value` before entering a public contract.
-- dynamic test engine is imported only in `security_eval/modules/task2/dynamic_test_adapter.py`.
+- Private dynamic-testing dependencies are imported only in
+  `security_eval/modules/task2/dynamic_test_adapter.py`.
 - Do not import Flask, task1, task4, routes, storage, or report code.
 - Do not commit or change branches unless the user separately requests it;
   inspect only the owned paths at each checkpoint.
@@ -134,7 +135,7 @@ def test_weighted_score_and_over_refusal_cap():
   literal statuses.
 - [ ] Run scoring tests and inspect the Task 2 diff.
 
-### Task 3: dynamic test engine 1.0.7 Adapter
+### Task 3: Private Dynamic-Testing Adapter
 
 **Files:**
 
@@ -149,13 +150,13 @@ def test_weighted_score_and_over_refusal_cap():
   `EVALUATION_EXAMPLES`.
 - Dynamic IDs are deterministic from category, seed, and variant index.
 
-- [ ] Download the dynamic test engine 1.0.7 wheel without installing it, inspect public
-  imports and constructor signatures, and record only the compatible import
-  paths in the adapter.
-- [ ] Write failing tests that inject fake dynamic test engine modules and assert all six
+- [ ] Verify the pinned dependency set through `requirements/task2.in` and
+  document only the narrow constructors and generated-case attributes consumed
+  by the private adapter.
+- [ ] Write failing tests that inject fake dependency modules and assert all six
   vulnerability types, guideline/example attachment, deterministic seed,
   one quick variant, three full variants, category filtering, and
-  `DependencyError` when dynamic test engine is absent.
+  `DependencyError` when the private dynamic dependency is absent.
 - [ ] Run adapter tests and confirm missing implementation failures.
 - [ ] Implement lazy imports and a small compatibility boundary around
   `AttackEngine`, vulnerability objects, `EvaluationExample`, and framework
@@ -192,7 +193,7 @@ def test_weighted_score_and_over_refusal_cap():
   `CaseResult`.
 - [ ] Normalize `EvaluationError`, Pydantic errors, and unexpected exceptions
   with `normalize_exception`; make the affected case `invalid` and continue.
-- [ ] Implement benchmark, dynamic, and hybrid orchestration. When dynamic test engine is
+- [ ] Implement benchmark, dynamic, and hybrid orchestration. When dynamic dependencies are
   missing, add a sanitized `DEPENDENCY_ERROR`; hybrid preserves static cases and
   dynamic-only returns a valid empty `TaskResult` with unknown risk.
 - [ ] Build `TaskResult`, validate it again with `TaskResult.model_validate`,
@@ -235,7 +236,7 @@ def test_weighted_score_and_over_refusal_cap():
 
 **Files:**
 
-- Modify only if a test exposes a defect: developer C files listed above.
+- Modify only if a test exposes a defect: task 2-owned files listed above.
 
 - [ ] Run `D:\app\Anaconda3\python.exe -m pytest tests/task2 -q`.
 - [ ] Run
@@ -243,7 +244,7 @@ def test_weighted_score_and_over_refusal_cap():
 - [ ] Run a source scan proving task2 does not import forbidden packages and a
   secret scan proving fixtures/benchmarks contain no API key or Bearer token.
 - [ ] Run `git status --short` and `git diff --check`; confirm all created or
-  modified implementation files are developer C-owned and the user's root
+  modified implementation files are task 2-owned and the user's root
   planning document remains untouched.
 - [ ] Report Python 3.14.6 verification separately from the declared Python
   3.11 deployment target, and report that real network model calls were not run.

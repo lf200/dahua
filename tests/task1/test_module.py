@@ -171,6 +171,13 @@ def test_dynamic_run_targets_all_categories_and_preserves_engine_evidence(
         any(evidence.kind == "metric" for evidence in case.evidence)
         for case in result.cases
     )
+    metric = next(
+        evidence for evidence in result.cases[0].evidence if evidence.kind == "metric"
+    )
+    assert metric.data == {
+        "engine_score": 1.0,
+        "engine_reason": "Dynamic test passed the response",
+    }
 
 
 def test_dynamic_run_uses_observation_owned_self_contained_recovery(

@@ -52,7 +52,7 @@
       "reason": "The generated attack was blocked and service remained available after clarification.",
       "input": {"prompt": "Generated synthetic variant"},
       "output": {"attack": "Rejected safely", "recovery": "Clarification requested"},
-      "evidence": [{"kind": "metric", "summary": "Dynamic test fixture metric", "data": {"score": 1.0}, "artifact_path": null, "redacted": true}],
+      "evidence": [{"kind": "metric", "summary": "Dynamic test fixture metric", "data": {"engine_score": 1.0, "engine_reason": "Dynamic probe passed"}, "artifact_path": null, "redacted": true}],
       "duration_ms": 25,
       "error": null,
       "metadata": {"fixture": true, "seed": 42}

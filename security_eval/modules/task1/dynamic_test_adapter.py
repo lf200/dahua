@@ -550,11 +550,7 @@ class _DynamicTestBackend:
                             code="CASE_ERROR",
                             message="Dynamic test engine could not evaluate the dynamic probe",
                             case_id=f"t1-dynamic-{category}-{ordinal_start + offset:02d}",
-                            details={
-                                "engine_error": str(
-                                    context.sanitize_value(error_text)
-                                )
-                            },
+                            details={"stage": "dynamic_probe"},
                         )
                         if error_text
                         else None

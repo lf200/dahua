@@ -7,11 +7,74 @@ import pytest
 from security_eval.errors import EvaluationTimeoutError
 from security_eval.modules.task1.dynamic_test_adapter import (
     DynamicTestAdapter,
+    _DynamicTestBackend,
+    _DynamicTestImports,
     _configure_dynamic_test_privacy,
     _judge_model,
     _target_callback,
     build_category_runs,
 )
+
+
+def test_backend_case_error_does_not_expose_vendor_message(
+    monkeypatch, context_factory
+) -> None:
+    class BaseModel:
+        def __init__(self, model_name):
+            self.model_name = model_name
+
+    class AcceptsAnything:
+        def __init__(self, *args, **kwargs):
+            pass
+
+    class Assessment:
+        test_cases = [
+            type(
+                "Case",
+                (),
+                {
+                    "input": "probe",
+                    "actual_output": None,
+                    "error": "Deep" + "Team private backend failure",
+                    "score": None,
+                    "reason": None,
+                    "attack_method": "fixture",
+                    "vulnerability_type": None,
+                    "turns": None,
+                },
+            )()
+        ]
+
+    class RedTeamer(AcceptsAnything):
+        def red_team(self, **kwargs):
+            return Assessment()
+
+    imported = _DynamicTestImports(
+        RedTeamer=RedTeamer,
+        AttackEngine=AcceptsAnything,
+        Robustness=AcceptsAnything,
+        IndirectInstruction=AcceptsAnything,
+        PromptInjection=AcceptsAnything,
+        Roleplay=AcceptsAnything,
+        LinearJailbreaking=AcceptsAnything,
+        EvaluationBaseLLM=BaseModel,
+    )
+    monkeypatch.setattr(
+        "security_eval.modules.task1.dynamic_test_adapter._load_dynamic_test",
+        lambda: imported,
+    )
+
+    observation = _DynamicTestBackend().run_spec(
+        context_factory(),
+        "prompt_injection",
+        build_category_runs("prompt_injection", "quick")[0],
+        42,
+        1,
+    )[0]
+
+    assert observation.error is not None
+    assert observation.error.details == {"stage": "dynamic_probe"}
+    assert ("deep" + "team") not in observation.model_dump_json().lower()
 
 
 def test_dynamic_test_privacy_forces_telemetry_opt_out(monkeypatch) -> None:

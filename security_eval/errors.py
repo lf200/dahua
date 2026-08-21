@@ -79,5 +79,5 @@ def normalize_exception(exc: Exception, sanitize_value=lambda value: value) -> E
     return ErrorInfo(
         code="INTERNAL_ERROR",
         message="Unexpected internal evaluation error",
-        details={"exception_type": type(exc).__name__},
+        details={},
     )
