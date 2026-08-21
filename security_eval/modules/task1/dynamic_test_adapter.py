@@ -12,6 +12,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field
 
 from security_eval.contracts import ErrorInfo, Profile, RunContext
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     DependencyError,
     EvaluationTimeoutError,
@@ -537,7 +538,9 @@ class _DynamicTestBackend:
                         )
                     ),
                     engine_score=getattr(test_case, "score", None),
-                    engine_reason=getattr(test_case, "reason", None),
+                    engine_reason=neutralize_source_value(
+                        getattr(test_case, "reason", None)
+                    ),
                     **scoring_contract,
                     metadata={
                         "seed": seed,

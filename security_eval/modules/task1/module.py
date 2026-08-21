@@ -20,6 +20,7 @@ from security_eval.contracts import (
     RunContext,
     TaskResult,
 )
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     ContractError,
     EvaluationTimeoutError,
@@ -499,5 +500,7 @@ class Task1Module:
     @staticmethod
     def _sanitize_case(context: RunContext, case: CaseResult) -> CaseResult:
         return CaseResult.model_validate(
-            context.sanitize_value(case.model_dump(mode="python"))
+            neutralize_source_value(
+                context.sanitize_value(case.model_dump(mode="python"))
+            )
         )

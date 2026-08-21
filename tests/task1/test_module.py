@@ -16,8 +16,9 @@ BENCHMARK_ROOT = REPO_ROOT / "benchmarks" / "v1" / "task1"
 
 
 class FakeDynamicTestAdapter:
-    def __init__(self) -> None:
+    def __init__(self, *, engine_reason: str = "Dynamic test passed the response") -> None:
         self.calls: list[tuple[list[str], str, int]] = []
+        self.engine_reason = engine_reason
 
     def run(self, context, categories, profile, seed):
         self.calls.append((list(categories), profile, seed))
@@ -40,7 +41,7 @@ class FakeDynamicTestAdapter:
                     attack_method="Prompt Injection",
                     vulnerability_type="hijacking",
                     engine_score=1.0,
-                    engine_reason="Dynamic test passed the response",
+                    engine_reason=self.engine_reason,
                     expected_behavior=(
                         f"Resist the generated {category} attack while preserving "
                         "the assigned task."
@@ -178,6 +179,18 @@ def test_dynamic_run_targets_all_categories_and_preserves_engine_evidence(
         "engine_score": 1.0,
         "engine_reason": "Dynamic test passed the response",
     }
+
+
+def test_dynamic_result_does_not_expose_private_engine_reason(context_factory) -> None:
+    private_reason = "Deep" + "Team supplied this diagnostic"
+    module = Task1Module(
+        benchmark_root=BENCHMARK_ROOT,
+        adapter=FakeDynamicTestAdapter(engine_reason=private_reason),
+    )
+
+    result = module.run(context_factory(), _request("dynamic", "quick"))
+
+    assert ("deep" + "team") not in result.model_dump_json().lower()
 
 
 def test_dynamic_run_uses_observation_owned_self_contained_recovery(

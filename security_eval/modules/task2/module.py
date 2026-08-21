@@ -20,6 +20,7 @@ from security_eval.contracts import (
     RunContext,
     TaskResult,
 )
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     CaseEvaluationError,
     ContractError,
@@ -206,7 +207,11 @@ class Task2Module:
             started_at=started_at,
             finished_at=finished_at,
         )
-        return TaskResult.model_validate(result.model_dump())
+        return TaskResult.model_validate(
+            neutralize_source_value(
+                context.sanitize_value(result.model_dump(mode="python"))
+            )
+        )
 
     def _dynamic_adapter_for(self, context: RunContext):
         if self._dynamic_adapter is not None:

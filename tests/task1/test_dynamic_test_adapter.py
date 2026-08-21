@@ -37,7 +37,7 @@ def test_backend_case_error_does_not_expose_vendor_message(
                     "actual_output": None,
                     "error": "Deep" + "Team private backend failure",
                     "score": None,
-                    "reason": None,
+                    "reason": "Deep" + "Eval supplied this diagnostic",
                     "attack_method": "fixture",
                     "vulnerability_type": None,
                     "turns": None,
@@ -75,6 +75,7 @@ def test_backend_case_error_does_not_expose_vendor_message(
     assert observation.error is not None
     assert observation.error.details == {"stage": "dynamic_probe"}
     assert ("deep" + "team") not in observation.model_dump_json().lower()
+    assert ("deep" + "eval") not in observation.model_dump_json().lower()
 
 
 def test_dynamic_test_privacy_forces_telemetry_opt_out(monkeypatch) -> None:

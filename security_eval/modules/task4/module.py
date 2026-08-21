@@ -17,6 +17,7 @@ from security_eval.contracts import (
     RunContext,
     TaskResult,
 )
+from security_eval.core.redaction import neutralize_source_value
 from security_eval.errors import (
     CaseEvaluationError,
     ContractError,
@@ -187,7 +188,9 @@ class Task4Module:
             finished_at=_now(),
         )
         return TaskResult.model_validate(
-            context.sanitize_value(result.model_dump(mode="python"))
+            neutralize_source_value(
+                context.sanitize_value(result.model_dump(mode="python"))
+            )
         )
 
     def _run_cases(
