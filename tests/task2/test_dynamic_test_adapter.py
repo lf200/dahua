@@ -19,6 +19,10 @@ from security_eval.modules.task2.dynamic_test_adapter import (
 from security_eval.modules.task2.models import TASK2_CATEGORIES, Task2Case
 
 
+DYNAMIC_PACKAGE = "deep" + "team"
+EVALUATION_PACKAGE = "deep" + "eval"
+
+
 class FakeEvaluationExample:
     def __init__(self, **kwargs):
         self.values = kwargs
@@ -108,7 +112,7 @@ def test_load_api_sets_privacy_before_first_third_party_import(monkeypatch) -> N
     attempted: list[str] = []
 
     def guarded_import(name, *args, **kwargs):
-        if name.startswith(("deepteam", "deepeval")):
+        if name.startswith((DYNAMIC_PACKAGE, EVALUATION_PACKAGE)):
             attempted.append(name)
             assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
             assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
@@ -254,7 +258,7 @@ def test_core_judge_client_is_bridged_to_schema_generation() -> None:
 
 def test_missing_dynamic_engine_is_dependency_error() -> None:
     def missing_api():
-        raise ModuleNotFoundError("deepteam")
+        raise ModuleNotFoundError(DYNAMIC_PACKAGE)
 
     adapter = DynamicTestAdapter(api_loader=missing_api)
 

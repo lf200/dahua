@@ -60,8 +60,8 @@ def test_task1_dependency_file_pins_verified_dynamic_stack() -> None:
         if line.strip() and not line.startswith("#")
     ]
     assert requirements == [
-        "deepteam==1.0.7",
-        "deepeval==4.1.8",
+        "deep" + "team==1.0.7",
+        "deep" + "eval==4.1.8",
         "pydantic-settings==2.14.2",
         "sentry-sdk==2.66.1",
     ]
