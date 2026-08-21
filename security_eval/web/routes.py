@@ -121,6 +121,7 @@ FIELD_LABELS: dict[str, str] = {
 # Blueprint factory
 # ============================================================
 
+
 def create_routes_blueprint(
     *,
     manager: RunManager,
@@ -149,9 +150,7 @@ def create_routes_blueprint(
     # only explicitly permitted keys reach the template.
     safe_settings = {
         key: value
-        for key, value in dict(
-            public_settings or {}
-        ).items()
+        for key, value in dict(public_settings or {}).items()
         if key in PUBLIC_SETTING_KEYS
     }
 
@@ -163,14 +162,43 @@ def create_routes_blueprint(
     def index() -> str:
         """Render the evaluation start page."""
 
+        form_values = dict(DEFAULT_FORM)
+
         return _render_index(
             manager=manager,
             public_settings=safe_settings,
-            form_values=dict(
-                DEFAULT_FORM
+            form_values=form_values,
+            estimate=_estimate_for_form(
+                manager,
+                form_values,
             ),
             errors=[],
         )
+
+    # ========================================================
+    # POST /api/estimate
+    # ========================================================
+
+    @blueprint.post("/api/estimate")
+    def estimate_api() -> Response | tuple[Response, int]:
+        """Return expected case count for the current form selection."""
+
+        form_values = _form_values_from_request()
+
+        try:
+            estimate = _estimate_for_form(
+                manager,
+                form_values,
+            )
+
+        except ValidationError as exc:
+            return _json_error(
+                code="INVALID_REQUEST",
+                message="; ".join(_validation_messages(exc)),
+                status_code=400,
+            )
+
+        return jsonify(estimate)
 
     # ========================================================
     # POST /runs
@@ -180,16 +208,10 @@ def create_routes_blueprint(
     def start_run() -> Response | tuple[str, int]:
         """Validate the form, start one run and redirect to its page."""
 
-        form_values = (
-            _form_values_from_request()
-        )
+        form_values = _form_values_from_request()
 
         try:
-            run_request = (
-                _build_run_request(
-                    form_values
-                )
-            )
+            run_request = _build_run_request(form_values)
 
         except ValidationError as exc:
             return (
@@ -197,19 +219,14 @@ def create_routes_blueprint(
                     manager=manager,
                     public_settings=safe_settings,
                     form_values=form_values,
-                    errors=(
-                        _validation_messages(
-                            exc
-                        )
-                    ),
+                    estimate=None,
+                    errors=(_validation_messages(exc)),
                 ),
                 400,
             )
 
         try:
-            run_id = manager.start(
-                run_request
-            )
+            run_id = manager.start(run_request)
 
         except ConfigurationError as exc:
             # Example:
@@ -219,9 +236,8 @@ def create_routes_blueprint(
                     manager=manager,
                     public_settings=safe_settings,
                     form_values=form_values,
-                    errors=[
-                        str(exc)
-                    ],
+                    estimate=None,
+                    errors=[str(exc)],
                 ),
                 400,
             )
@@ -236,11 +252,9 @@ def create_routes_blueprint(
                     manager=manager,
                     public_settings=safe_settings,
                     form_values=form_values,
+                    estimate=None,
                     errors=[
-                        (
-                            "已有测评任务正在运行，"
-                            "请等待当前任务完成后再启动新的测评。"
-                        )
+                        ("已有测评任务正在运行，请等待当前任务完成后再启动新的测评。")
                     ],
                 ),
                 409,
@@ -268,9 +282,7 @@ def create_routes_blueprint(
     # GET /runs/<run_id>
     # ========================================================
 
-    @blueprint.get(
-        "/runs/<run_id>"
-    )
+    @blueprint.get("/runs/<run_id>")
     def run_detail(
         run_id: str,
     ) -> Response:
@@ -291,33 +303,22 @@ def create_routes_blueprint(
 
         # presentation.py is only used when a complete
         # RunReport already exists.
-        report_view = (
-            build_run_view(
-                report
-            )
-            if report is not None
-            else None
-        )
+        report_view = build_run_view(report) if report is not None else None
 
         response = make_response(
             render_template(
                 "run.html",
-
                 run_id=run_id,
-
                 # Lightweight queued/running/final status.
                 status=status,
-
                 # None while queued/running or when a run failed
                 # before a complete report could be generated.
                 report=report_view,
-
                 # run.html will use this for browser polling.
                 poll_url=url_for(
                     "web.run_status_api",
                     run_id=run_id,
                 ),
-
                 # Only show the download link after the report exists.
                 report_url=(
                     url_for(
@@ -331,9 +332,7 @@ def create_routes_blueprint(
         )
 
         # Evaluation output may contain sensitive evidence.
-        response.headers[
-            "Cache-Control"
-        ] = "no-store"
+        response.headers["Cache-Control"] = "no-store"
 
         return response
 
@@ -341,9 +340,7 @@ def create_routes_blueprint(
     # GET /api/runs/<run_id>
     # ========================================================
 
-    @blueprint.get(
-        "/api/runs/<run_id>"
-    )
+    @blueprint.get("/api/runs/<run_id>")
     def run_status_api(
         run_id: str,
     ) -> Response | tuple[Response, int]:
@@ -361,15 +358,11 @@ def create_routes_blueprint(
                 status_code=404,
             )
 
-        payload = dict(
-            status
-        )
+        payload = dict(status)
 
         # Give the browser stable URLs instead of constructing
         # them in JavaScript.
-        payload[
-            "page_url"
-        ] = url_for(
+        payload["page_url"] = url_for(
             "web.run_detail",
             run_id=run_id,
         )
@@ -378,20 +371,14 @@ def create_routes_blueprint(
             "report_available",
             False,
         ):
-            payload[
-                "report_url"
-            ] = url_for(
+            payload["report_url"] = url_for(
                 "web.download_report",
                 run_id=run_id,
             )
 
-        response = jsonify(
-            payload
-        )
+        response = jsonify(payload)
 
-        response.headers[
-            "Cache-Control"
-        ] = "no-store"
+        response.headers["Cache-Control"] = "no-store"
 
         return response
 
@@ -399,9 +386,7 @@ def create_routes_blueprint(
     # GET /runs/<run_id>/report.json
     # ========================================================
 
-    @blueprint.get(
-        "/runs/<run_id>/report.json"
-    )
+    @blueprint.get("/runs/<run_id>/report.json")
     def download_report(
         run_id: str,
     ) -> Response | tuple[Response, int]:
@@ -434,9 +419,7 @@ def create_routes_blueprint(
         if report is None:
             return _json_error(
                 code="REPORT_NOT_READY",
-                message=(
-                    "Run report is not available yet"
-                ),
+                message=("Run report is not available yet"),
                 status_code=409,
             )
 
@@ -458,20 +441,13 @@ def create_routes_blueprint(
             mimetype="application/json",
         )
 
-        response.headers[
-            "Content-Disposition"
-        ] = (
-            "attachment; "
-            f'filename="{run_id}-report.json"'
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{run_id}-report.json"'
         )
 
-        response.headers[
-            "Cache-Control"
-        ] = "no-store"
+        response.headers["Cache-Control"] = "no-store"
 
-        response.headers[
-            "X-Content-Type-Options"
-        ] = "nosniff"
+        response.headers["X-Content-Type-Options"] = "nosniff"
 
         return response
 
@@ -482,47 +458,31 @@ def create_routes_blueprint(
 # Form helpers
 # ============================================================
 
+
 def _form_values_from_request() -> dict[str, Any]:
     """Read the HTML form while keeping values safe for redisplay."""
 
-    tasks = request.form.getlist(
-        "tasks"
-    )
+    tasks = request.form.getlist("tasks")
 
     return {
         "tasks": tasks,
-
         "mode": request.form.get(
             "mode",
             DEFAULT_FORM["mode"],
         ),
-
         "profile": request.form.get(
             "profile",
             DEFAULT_FORM["profile"],
         ),
-
         "seed": request.form.get(
             "seed",
-            str(
-                DEFAULT_FORM["seed"]
-            ),
+            str(DEFAULT_FORM["seed"]),
         ),
-
-        "benchmark_version":
-            request.form.get(
-                "benchmark_version",
-                DEFAULT_FORM[
-                    "benchmark_version"
-                ],
-            ),
-
-        "authorized_target":
-            _checkbox_checked(
-                request.form.get(
-                    "authorized_target"
-                )
-            ),
+        "benchmark_version": request.form.get(
+            "benchmark_version",
+            DEFAULT_FORM["benchmark_version"],
+        ),
+        "authorized_target": _checkbox_checked(request.form.get("authorized_target")),
     }
 
 
@@ -549,9 +509,7 @@ def _build_run_request(
         # Empty seed means:
         # use the default reproducible seed.
         if not seed:
-            seed = DEFAULT_FORM[
-                "seed"
-            ]
+            seed = DEFAULT_FORM["seed"]
 
     # -----------------------------
     # benchmark version
@@ -560,18 +518,12 @@ def _build_run_request(
     benchmark_version = str(
         form_values.get(
             "benchmark_version",
-            DEFAULT_FORM[
-                "benchmark_version"
-            ],
+            DEFAULT_FORM["benchmark_version"],
         )
     ).strip()
 
     if not benchmark_version:
-        benchmark_version = str(
-            DEFAULT_FORM[
-                "benchmark_version"
-            ]
-        )
+        benchmark_version = str(DEFAULT_FORM["benchmark_version"])
 
     # -----------------------------
     # tasks
@@ -587,48 +539,34 @@ def _build_run_request(
     tasks: list[Any] = []
 
     for item in raw_tasks:
-        text = str(
-            item
-        ).strip()
+        text = str(item).strip()
 
         try:
-            tasks.append(
-                int(text)
-            )
+            tasks.append(int(text))
 
         except ValueError:
             # Keep an invalid value so Pydantic can return a proper
             # contract validation error instead of us silently
             # dropping it.
-            tasks.append(
-                text
-            )
+            tasks.append(text)
 
     # -----------------------------
     # authorization
     # -----------------------------
 
-    authorized_value = (
-        form_values.get(
-            "authorized_target",
-            False,
-        )
+    authorized_value = form_values.get(
+        "authorized_target",
+        False,
     )
 
     if isinstance(
         authorized_value,
         str,
     ):
-        authorized_target = (
-            _checkbox_checked(
-                authorized_value
-            )
-        )
+        authorized_target = _checkbox_checked(authorized_value)
 
     else:
-        authorized_target = bool(
-            authorized_value
-        )
+        authorized_target = bool(authorized_value)
 
     # -----------------------------
     # final contract validation
@@ -637,22 +575,11 @@ def _build_run_request(
     return RunRequest.model_validate(
         {
             "tasks": tasks,
-
-            "mode": form_values.get(
-                "mode"
-            ),
-
-            "profile": form_values.get(
-                "profile"
-            ),
-
+            "mode": form_values.get("mode"),
+            "profile": form_values.get("profile"),
             "seed": seed,
-
-            "benchmark_version":
-                benchmark_version,
-
-            "authorized_target":
-                authorized_target,
+            "benchmark_version": benchmark_version,
+            "authorized_target": authorized_target,
         }
     )
 
@@ -665,17 +592,12 @@ def _checkbox_checked(
     if value is None:
         return False
 
-    return (
-        value
-        .strip()
-        .lower()
-        in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-    )
+    return value.strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _validation_messages(
@@ -694,13 +616,7 @@ def _validation_messages(
             (),
         )
 
-        first = (
-            str(
-                location[0]
-            )
-            if location
-            else "request"
-        )
+        first = str(location[0]) if location else "request"
 
         label = FIELD_LABELS.get(
             first,
@@ -714,53 +630,78 @@ def _validation_messages(
             )
         )
 
-        messages.append(
-            f"{label}: {message}"
-        )
+        messages.append(f"{label}: {message}")
 
-    return messages or [
-        "提交的测评参数无效。"
-    ]
+    return messages or ["提交的测评参数无效。"]
 
 
 # ============================================================
 # Rendering / lookup helpers
 # ============================================================
 
+
 def _render_index(
     *,
     manager: RunManager,
     public_settings: Mapping[str, Any],
     form_values: Mapping[str, Any],
+    estimate: dict[str, Any] | None,
     errors: list[str],
 ) -> str:
     """Render index.html with one consistent context."""
 
     return render_template(
         "index.html",
-
-        task_choices=
-            TASK_CHOICES,
-
-        mode_choices=
-            MODE_CHOICES,
-
-        profile_choices=
-            PROFILE_CHOICES,
-
-        form=dict(
-            form_values
-        ),
-
+        task_choices=TASK_CHOICES,
+        mode_choices=MODE_CHOICES,
+        profile_choices=PROFILE_CHOICES,
+        form=dict(form_values),
         errors=errors,
-
-        active_run=
-            manager.is_active(),
-
-        public_settings=dict(
-            public_settings
-        ),
+        estimate=estimate,
+        active_run=manager.is_active(),
+        public_settings=dict(public_settings),
     )
+
+
+def _estimate_for_form(
+    manager: RunManager,
+    form_values: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Build a safe estimate payload from current form values."""
+
+    run_request = _build_run_request(
+        {
+            **dict(form_values),
+            "authorized_target": False,
+        }
+    )
+
+    estimates = manager.estimate(run_request)
+
+    tasks = [
+        {
+            "task_id": item.task_id,
+            "name_zh": TASK_NAMES_ZH[item.task_id],
+            "expected_cases": item.expected_cases,
+            "estimated_seconds": item.estimated_seconds,
+            "notes": list(item.notes),
+        }
+        for item in estimates
+    ]
+
+    total_cases = sum(item["expected_cases"] for item in tasks)
+
+    total_seconds = sum(item["estimated_seconds"] for item in tasks)
+
+    return {
+        "total_cases": total_cases,
+        "estimated_seconds": total_seconds,
+        "estimated_minutes": round(
+            total_seconds / 60,
+            1,
+        ),
+        "tasks": tasks,
+    }
 
 
 def _safe_get_status(
@@ -770,9 +711,7 @@ def _safe_get_status(
     """Treat malformed/unknown run IDs as not found."""
 
     try:
-        return manager.get_status(
-            run_id
-        )
+        return manager.get_status(run_id)
 
     except (
         ValueError,
@@ -788,9 +727,7 @@ def _safe_get_report(
     """Return a report or None for malformed/unknown run IDs."""
 
     try:
-        return manager.get_report(
-            run_id
-        )
+        return manager.get_report(run_id)
 
     except (
         ValueError,
@@ -816,9 +753,7 @@ def _json_error(
         }
     )
 
-    response.headers[
-        "Cache-Control"
-    ] = "no-store"
+    response.headers["Cache-Control"] = "no-store"
 
     return (
         response,

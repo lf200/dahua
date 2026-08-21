@@ -4,7 +4,14 @@ import threading
 import time
 
 
-VALID_FORM = {"tasks": ["1", "2", "4"], "mode": "hybrid", "profile": "quick", "seed": "42", "benchmark_version": "v1", "authorized_target": "on"}
+VALID_FORM = {
+    "tasks": ["1", "2", "4"],
+    "mode": "hybrid",
+    "profile": "quick",
+    "seed": "42",
+    "benchmark_version": "v1",
+    "authorized_target": "on",
+}
 
 
 def wait_final(client, location):
@@ -13,16 +20,48 @@ def wait_final(client, location):
         payload = client.get(api).get_json()
         if payload["status"] in {"completed", "partial", "failed"}:
             return payload
-        time.sleep(.02)
+        time.sleep(0.02)
     raise AssertionError("fake run did not finish")
 
 
 def test_index_and_secret_filter(app_factory):
-    app = app_factory(public_settings={"target_model": "safe-model", "target_api_key": "SECRET-DO-NOT-SHOW"})
+    app = app_factory(
+        public_settings={
+            "target_model": "safe-model",
+            "target_api_key": "SECRET-DO-NOT-SHOW",
+        }
+    )
     body = app.test_client().get("/").get_data(as_text=True)
     assert "大模型安全综合测评" in body
+    assert "预计测试用例" in body
+    assert "110" in body
     assert "safe-model" in body
     assert "SECRET-DO-NOT-SHOW" not in body
+
+
+def test_estimate_api_updates_for_selection(app_factory):
+    app = app_factory()
+    response = app.test_client().post(
+        "/api/estimate",
+        data={
+            **VALID_FORM,
+            "tasks": ["2"],
+            "mode": "benchmark",
+            "profile": "quick",
+        },
+    )
+    payload = response.get_json()
+    assert response.status_code == 200
+    assert payload["total_cases"] == 18
+    assert payload["tasks"] == [
+        {
+            "task_id": 2,
+            "name_zh": "内容安全",
+            "expected_cases": 18,
+            "estimated_seconds": 54,
+            "notes": [],
+        }
+    ]
 
 
 def test_authorization_is_required(app_factory):
@@ -47,6 +86,11 @@ def test_full_fake_flow_and_download(app_factory):
     assert page.status_code == 200
     assert "综合安全评分" in body
     assert "对抗攻击安全" in body and "内容安全" in body and "大模型应用安全" in body
+    assert "Targeted ASR" in body
+    assert "未授权工具调用率" in body
+    assert "泄露率" in body
+    assert "DoS 中断率" in body
+    assert "防御效用损失" in body
     assert "发现的问题" in body and "无效" in body
     download = client.get(f"/runs/{run_id}/report.json")
     assert download.status_code == 200
@@ -68,12 +112,18 @@ def test_single_active_run_returns_conflict(app_factory):
 
 def test_unknown_and_malformed_runs_are_not_found(app_factory):
     client = app_factory().test_client()
-    for path in ["/runs/notfound1", "/api/runs/notfound1", "/runs/notfound1/report.json", "/runs/%2e%2e"]:
+    for path in [
+        "/runs/notfound1",
+        "/api/runs/notfound1",
+        "/runs/notfound1/report.json",
+        "/runs/%2e%2e",
+    ]:
         assert client.get(path).status_code == 404
 
 
 def test_jinja_escapes_fixture_evidence(app_factory, monkeypatch):
     from tests.web.conftest import FakeEvaluationService
+
     original = FakeEvaluationService.execute
 
     def malicious(self, request, *, run_id=None):
@@ -81,7 +131,9 @@ def test_jinja_escapes_fixture_evidence(app_factory, monkeypatch):
         task = report.task_results[0]
         case = task.cases[1].model_copy(update={"reason": "<script>alert(1)</script>"})
         task = task.model_copy(update={"cases": [task.cases[0], case, *task.cases[2:]]})
-        return report.model_copy(update={"task_results": [task, *report.task_results[1:]]})
+        return report.model_copy(
+            update={"task_results": [task, *report.task_results[1:]]}
+        )
 
     monkeypatch.setattr(FakeEvaluationService, "execute", malicious)
     app = app_factory()

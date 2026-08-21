@@ -10,7 +10,21 @@
 {% if errors %}<div class="alert" role="alert"><strong>无法开始测评</strong><ul>{% for error in errors %}<li>{{ error }}</li>{% endfor %}</ul></div>{% endif %}
 {% if active_run %}<div class="notice">当前已有测评正在执行，请等待完成后再提交。</div>{% endif %}
 
-<form class="panel form-grid" method="post" action="{{ url_for('web.start_run') }}">
+<form class="panel form-grid" method="post" action="{{ url_for('web.start_run') }}" data-estimate-url="{{ url_for('web.estimate_api') }}">
+  <section class="estimate-panel" aria-live="polite">
+    <div>
+      <span class="estimate-label">预计测试用例</span>
+      <strong id="estimate-total">{{ estimate.total_cases if estimate else '—' }}</strong>
+      <small id="estimate-time">{% if estimate %}约 {{ estimate.estimated_minutes }} 分钟{% else %}选择任务后显示{% endif %}</small>
+    </div>
+    <dl id="estimate-tasks">
+      {% if estimate %}
+      {% for item in estimate.tasks %}
+      <div><dt>{{ item.name_zh }}</dt><dd>{{ item.expected_cases }} 例</dd></div>
+      {% endfor %}
+      {% endif %}
+    </dl>
+  </section>
   <fieldset>
     <legend>01 · 测评任务</legend>
     <div class="choice-grid">
@@ -34,4 +48,32 @@
   <label class="authorization"><input type="checkbox" name="authorized_target" value="on" {% if form.authorized_target %}checked{% endif %}><span>我确认该测试目标已获得授权，并理解测评可能产生对抗性请求。</span></label>
   <button class="primary" type="submit" {% if active_run %}disabled{% endif %}>开始安全测评 <span>→</span></button>
 </form>
+<script>
+const form=document.querySelector("form[data-estimate-url]");
+const total=document.getElementById("estimate-total");
+const time=document.getElementById("estimate-time");
+const tasks=document.getElementById("estimate-tasks");
+let estimateTimer;
+function renderEstimate(data){
+  total.textContent=data.total_cases;
+  time.textContent=`约 ${data.estimated_minutes} 分钟`;
+  tasks.replaceChildren(...data.tasks.map((item)=>{
+    const row=document.createElement("div");
+    const name=document.createElement("dt");
+    const count=document.createElement("dd");
+    name.textContent=item.name_zh;
+    count.textContent=`${item.expected_cases} 例`;
+    row.append(name,count);
+    return row;
+  }));
+}
+async function refreshEstimate(){
+  try{
+    const response=await fetch(form.dataset.estimateUrl,{method:"POST",body:new FormData(form),cache:"no-store"});
+    if(!response.ok){return}
+    renderEstimate(await response.json());
+  }catch(error){}
+}
+form.addEventListener("change",()=>{clearTimeout(estimateTimer);estimateTimer=setTimeout(refreshEstimate,120)});
+</script>
 {% endblock %}

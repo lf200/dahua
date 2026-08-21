@@ -11,7 +11,17 @@ def test_browser_journey_uses_only_contract_fixtures(tmp_path):
     app = create_app(service=service, output_root=tmp_path, testing=True)
     client = app.test_client()
     assert client.get("/").status_code == 200
-    created = client.post("/runs", data={"tasks": ["1", "2", "4"], "mode": "hybrid", "profile": "quick", "seed": "42", "benchmark_version": "v1", "authorized_target": "on"})
+    created = client.post(
+        "/runs",
+        data={
+            "tasks": ["1", "2", "4"],
+            "mode": "hybrid",
+            "profile": "quick",
+            "seed": "42",
+            "benchmark_version": "v1",
+            "authorized_target": "on",
+        },
+    )
     assert created.status_code == 303
     run_path = created.headers["Location"]
     run_id = run_path.rsplit("/", 1)[-1]
@@ -19,7 +29,7 @@ def test_browser_journey_uses_only_contract_fixtures(tmp_path):
         state = client.get(f"/api/runs/{run_id}").get_json()
         if state["status"] == "completed":
             break
-        time.sleep(.02)
+        time.sleep(0.02)
     else:
         raise AssertionError("run did not complete")
     assert "下载完整 JSON 报告" in client.get(run_path).get_data(as_text=True)
