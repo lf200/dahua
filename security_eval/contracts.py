@@ -137,7 +137,7 @@ class CaseResult(ContractModel):
     case_id: str = Field(min_length=1, max_length=200)
     task_id: TaskId
     source: Literal["benchmark", "dynamic"]
-    engine: Literal["benchmark", "deepteam", "agentdojo", "fake"]
+    engine: Literal["benchmark", "dynamic_test", "application_security", "fake"]
     category: str = Field(min_length=1, max_length=150)
     scenario: str = Field(min_length=1, max_length=1000)
     status: CaseStatus

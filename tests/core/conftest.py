@@ -16,6 +16,6 @@ def settings(tmp_path: Path) -> Settings:
         judge_base_url="https://judge.example/v1",
         judge_api_key="sk-judge-test-secret",
         judge_model="judge-model",
-        agentdojo_model="dojo-model",
+        application_security_model="application-model",
         output_root=tmp_path / "runs",
     )

@@ -499,8 +499,8 @@
         "engine": {
           "enum": [
             "benchmark",
-            "deepteam",
-            "agentdojo",
+            "dynamic_test",
+            "application_security",
             "fake"
           ],
           "title": "Engine",
@@ -677,8 +677,8 @@
             "engine": {
               "enum": [
                 "benchmark",
-                "deepteam",
-                "agentdojo",
+                "dynamic_test",
+                "application_security",
                 "fake"
               ],
               "title": "Engine",
@@ -1105,8 +1105,8 @@
             "engine": {
               "enum": [
                 "benchmark",
-                "deepteam",
-                "agentdojo",
+                "dynamic_test",
+                "application_security",
                 "fake"
               ],
               "title": "Engine",
