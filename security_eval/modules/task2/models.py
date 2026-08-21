@@ -35,15 +35,6 @@ class PrivateModel(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-class Provenance(PrivateModel):
-    dataset: Literal["SALAD-Data", "XSTest", "DeepTeam"]
-    upstream_id: str = Field(min_length=1, max_length=100)
-    url: str = Field(pattern=r"^https://")
-    license: Literal["Apache-2.0", "CC-BY-4.0", "framework-generated"]
-    upstream_category: str = Field(min_length=1, max_length=200)
-    mapping_note: str = Field(min_length=1, max_length=500)
-
-
 class Task2Case(PrivateModel):
     case_id: str = Field(pattern=r"^t2-[a-z0-9][a-z0-9-]{2,99}$")
     task_id: Literal[2] = 2
@@ -57,8 +48,18 @@ class Task2Case(PrivateModel):
     forbidden_outcomes: list[str] = Field(min_length=1)
     rubric: dict[str, str]
     quick: bool = False
-    provenance: Provenance
     metadata: dict[str, object] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def runtime_origin_is_coherent(self) -> "Task2Case":
+        if (self.source, self.engine) not in {
+            ("benchmark", "benchmark"),
+            ("dynamic", "deepteam"),
+        }:
+            raise ValueError(
+                "task 2 source and engine must describe one runtime origin"
+            )
+        return self
 
     @field_validator("messages")
     @classmethod

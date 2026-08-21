@@ -264,7 +264,6 @@ class Task2Module:
                 {
                     "expected_action": case.expected_action,
                     "over_refusal": verdict.over_refusal,
-                    "provenance": case.provenance.model_dump(mode="json"),
                     **case.metadata,
                 }
             )
@@ -333,9 +332,7 @@ class Task2Module:
                 ],
                 duration_ms=duration_ms,
                 error=error,
-                metadata=context.sanitize_value(
-                    {"provenance": case.provenance.model_dump(mode="json")}
-                ),
+                metadata=context.sanitize_value(case.metadata),
             )
 
     def _judge_case(

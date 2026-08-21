@@ -177,12 +177,7 @@ def test_validate_and_run_reject_tampered_runtime_benchmark(
     benchmark_root = tmp_path / "task2"
     shutil.copytree(Path("benchmarks/v1/task2"), benchmark_root)
     cases_path = benchmark_root / "cases.jsonl"
-    original = cases_path.read_text(encoding="utf-8")
-    cases_path.write_text(
-        original.replace("robbing a store", "robbing the store", 1),
-        encoding="utf-8",
-        newline="\n",
-    )
+    cases_path.write_bytes(cases_path.read_bytes() + b"\n")
     module = Task2Module(
         benchmark_root=benchmark_root,
         dynamic_adapter=FakeDynamicAdapter(),
@@ -369,7 +364,7 @@ def test_malformed_judge_case_is_invalid_and_siblings_continue(
     tmp_path: Path, settings
 ) -> None:
     judge = FakeJudge()
-    judge.malformed_case_id = "t2-illegal-salad-00011"
+    judge.malformed_case_id = "t2-illegal-001"
     module = Task2Module(dynamic_adapter=FakeDynamicAdapter())
 
     result = module.run(
@@ -388,7 +383,7 @@ def test_malformed_judge_case_is_invalid_and_siblings_continue(
 def test_unexpected_target_error_is_sanitized_and_isolated(
     tmp_path: Path, settings
 ) -> None:
-    target = FakeTarget(fail_text="white supremacy")
+    target = FakeTarget(fail_text="fare inspections")
     module = Task2Module(dynamic_adapter=FakeDynamicAdapter())
 
     result = module.run(

@@ -21,22 +21,13 @@ planning target. The frozen task 2 benchmark contains 90 cases: 15 for each of
 - `quick`: two cases per category, 12 total. It includes one risky request and
   one safe-boundary request per category.
 - `full`: all 90 cases.
-- Twelve cases per category are curated from the public SALAD-Data base set
-  (Apache-2.0), using the upstream hierarchy to map them to the six task 2
-  categories.
-- Three cases per category are curated from XSTest (CC BY 4.0) to exercise
-  safe boundaries and exaggerated refusal.
-- Every case records its upstream dataset, upstream ID, license, original
-  category, and local mapping. The benchmark never sends labels or rubrics to
-  the target model.
-- Every category covers `direct_risk`, `bypass`, `packaging`, and
-  `safe_boundary`. Bypass and packaging cases use concise local wrappers rather
-  than copying SALAD's long attack-enhanced templates.
-- `benchmarks/v1/task2/ATTRIBUTION.md` pins both upstream revisions and records
-  creators, citations, license links, and every class of local modification.
-- Gated SORRY-Bench data and SALAD attack-enhanced jailbreak wrappers are not
-  copied into the benchmark. The former cannot be fetched reproducibly without
-  approval; the latter contains long, unnecessary attack templates.
+- Each category uses the same fixed scenario distribution: five `direct_risk`,
+  four `bypass`, three `packaging`, and three `safe_boundary` cases.
+- The benchmark stores only evaluation fields required by `Task2Case`; labels
+  and rubrics are private evaluator inputs and are never sent to the target
+  model.
+- Case IDs are deterministic project-local identifiers, and static case
+  metadata is empty.
 
 The committed prompts are curated test inputs, not operational instructions.
 Cases containing directly executable high-risk detail are excluded.
@@ -125,7 +116,7 @@ for evaluation privacy.
 ## Verification
 
 Offline tests mock the target, judge, and DeepTeam. They cover the 90-case
-inventory and source attribution, quick selection, hashes, the public Protocol,
+inventory and uniform scenario distribution, quick selection, hashes, the public Protocol,
 all three modes, dynamic budgets, hybrid selection, scoring, over-refusal,
 invalid isolation, runtime manifest/hash tamper rejection, LF delivery,
 telemetry opt-out ordering, contract validation, fixture loading, and recursive
