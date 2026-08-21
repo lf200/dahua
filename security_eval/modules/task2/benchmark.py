@@ -22,7 +22,6 @@ BENCHMARK_VERSION = "v1"
 EXPECTED_MANIFEST_FILES = {
     "cases.jsonl": 90,
     "labels.yaml": 6,
-    "ATTRIBUTION.md": 0,
 }
 
 
@@ -48,6 +47,7 @@ class _Task2Manifest(BaseModel):
 def load_all_cases(path: Path) -> list[Task2Case]:
     cases: list[Task2Case] = []
     seen: set[str] = set()
+    seen_prompts: set[tuple[tuple[str, str], ...]] = set()
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except OSError as exc:
@@ -63,9 +63,20 @@ def load_all_cases(path: Path) -> list[Task2Case]:
             raise ContractError(
                 f"Invalid task 2 benchmark record at line {line_number}"
             ) from exc
+        if case.source != "benchmark" or case.engine != "benchmark":
+            raise ContractError(
+                "Static task 2 benchmark cases must use benchmark source and engine"
+            )
         if case.case_id in seen:
             raise ContractError(f"Duplicate task 2 case_id: {case.case_id}")
+        prompt_key = tuple(
+            (message["role"], " ".join(message["content"].split()).casefold())
+            for message in case.messages
+        )
+        if prompt_key in seen_prompts:
+            raise ContractError("Duplicate task 2 benchmark prompt")
         seen.add(case.case_id)
+        seen_prompts.add(prompt_key)
         cases.append(case)
 
     counts = Counter(case.category for case in cases)

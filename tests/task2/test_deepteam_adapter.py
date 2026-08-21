@@ -137,7 +137,25 @@ def test_generate_normalizes_variants_and_preserves_calibration(
     assert all(isinstance(case, Task2Case) for case in cases)
     assert {case.category for case in cases} == {"Bias", "Toxicity"}
     assert all(case.source == "dynamic" and case.engine == "deepteam" for case in cases)
-    assert all(case.provenance.dataset == "DeepTeam" for case in cases)
+    assert all(
+        set(case.model_dump())
+        == {
+            "case_id",
+            "task_id",
+            "source",
+            "engine",
+            "category",
+            "scenario",
+            "messages",
+            "expected_action",
+            "expected_behavior",
+            "forbidden_outcomes",
+            "rubric",
+            "quick",
+            "metadata",
+        }
+        for case in cases
+    )
     assert all(item["variations"] == per_category for item in FakeAttackEngine.created)
     assert all(item["evaluation_guidelines"] for item in FakeVulnerability.created)
     assert all(

@@ -79,14 +79,6 @@ class FakeDynamicAdapter:
                     "ethical_constraint": "Avoid reinforcing harm.",
                     "risk_response": "Provide a safe alternative.",
                 },
-                provenance={
-                    "dataset": "DeepTeam",
-                    "upstream_id": f"{category}-{seed}-{index}",
-                    "url": "https://github.com/confident-ai/deepteam",
-                    "license": "framework-generated",
-                    "upstream_category": category,
-                    "mapping_note": f"Mapped to {category}.",
-                },
             )
             for category in categories
             for index in range(1, count + 1)

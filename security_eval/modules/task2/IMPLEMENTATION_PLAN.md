@@ -5,8 +5,8 @@
 > current workspace. Do not dispatch subagents unless the user explicitly asks.
 
 **Goal:** Deliver developer C's contract-valid task 2 module, a 90-case
-attributed benchmark, DeepTeam dynamic adaptation, scoring, fixture, and
-offline tests without modifying another owner's files.
+uniform benchmark, DeepTeam dynamic adaptation, scoring, fixture, and offline
+tests without modifying another owner's files.
 
 **Architecture:** Benchmark and dynamic inputs normalize to a private
 `Task2Case`. One runner calls the frozen target and judge client interfaces,
@@ -26,8 +26,8 @@ pytest, JSONL, SHA-256.
   `security_eval.contracts` without adding fields.
 - The full benchmark contains exactly 90 cases, 15 per required category; the
   quick profile contains exactly 12, two per category.
-- Each case records an upstream dataset, ID, URL, license, upstream category,
-  and local mapping.
+- Static cases contain only evaluation fields required by `Task2Case` and use
+  empty metadata.
 - Unit tests never call a real model or DeepTeam network service.
 - All inputs, outputs, evidence, reasons, metadata, and errors are passed
   through `RunContext.sanitize_value` before entering a public contract.
@@ -51,8 +51,8 @@ pytest, JSONL, SHA-256.
 
 **Interfaces:**
 
-- Produces `Task2Case`, `JudgeVerdict`, `Provenance`, `load_cases(path,
-  profile)`, `load_all_cases(path)`, and `select_quick_cases(cases)`.
+- Produces `Task2Case`, `JudgeVerdict`, `load_cases(path, profile)`,
+  `load_all_cases(path)`, and `select_quick_cases(cases)`.
 - `Task2Case.messages` is a non-empty list of `{role, content}` dictionaries.
 - `JudgeVerdict` accepts only `0`, `0.5`, or `1` for each scoring dimension.
 
@@ -81,19 +81,18 @@ def test_full_and_quick_inventory(cases_path):
   `D:\app\Anaconda3\python.exe -m pytest tests/task2/test_benchmark.py -q`
   and confirm import/file failures.
 - [ ] Implement strict Pydantic private models with `extra="forbid"`, safe
-  case-ID validation, task ID fixed to 2, category literals, provenance fields,
-  and a `JudgeVerdict` discrete-score validator.
-- [ ] Curate 72 short SALAD-Data base prompts and 18 XSTest safe prompts. Record
-  upstream IDs and licenses in every JSONL record; exclude prompts containing
-  operational harmful steps. Assign one risky and one safe-boundary case per
-  category to quick.
+  case-ID validation, task ID fixed to 2, category literals, and a
+  `JudgeVerdict` discrete-score validator.
+- [ ] Write 90 concise evaluation prompts with 15 cases per category. Use five
+  direct-risk, four bypass, three packaging, and three safe-boundary cases in
+  every category; exclude prompts containing operational harmful steps. Assign
+  one risky and one safe-boundary case per category to quick.
 - [ ] Implement UTF-8 JSONL loading, per-line validation, uniqueness and balance
   checks, deterministic file-order preservation, and quick selection.
-- [ ] Add tests that malformed JSON, duplicate IDs, an unknown category,
-  missing provenance, and an unbalanced inventory raise `ContractError` without
-  leaking the raw prompt.
-- [ ] Run the benchmark tests and inspect `git diff --` for only Task 1 owned
-  paths.
+- [ ] Add tests that malformed JSON, duplicate IDs, an unknown category, and an
+  unbalanced inventory raise `ContractError` without leaking the raw prompt.
+- [ ] Run the benchmark tests and inspect `git diff --` for only Developer C
+  owned paths.
 
 ### Task 2: Scoring, Aggregation, and Over-Refusal
 
