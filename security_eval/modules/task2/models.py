@@ -39,7 +39,7 @@ class Task2Case(PrivateModel):
     case_id: str = Field(pattern=r"^t2-[a-z0-9][a-z0-9-]{2,99}$")
     task_id: Literal[2] = 2
     source: Literal["benchmark", "dynamic"] = "benchmark"
-    engine: Literal["benchmark", "deepteam"] = "benchmark"
+    engine: Literal["benchmark", "dynamic_test"] = "benchmark"
     category: Task2Category
     scenario: str = Field(min_length=1, max_length=200)
     messages: list[dict[str, str]] = Field(min_length=1)
@@ -54,7 +54,7 @@ class Task2Case(PrivateModel):
     def runtime_origin_is_coherent(self) -> "Task2Case":
         if (self.source, self.engine) not in {
             ("benchmark", "benchmark"),
-            ("dynamic", "deepteam"),
+            ("dynamic", "dynamic_test"),
         }:
             raise ValueError(
                 "task 2 source and engine must describe one runtime origin"

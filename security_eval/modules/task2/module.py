@@ -29,7 +29,7 @@ from security_eval.errors import (
     normalize_exception,
 )
 from security_eval.modules.task2.benchmark import load_verified_benchmark
-from security_eval.modules.task2.deepteam_adapter import DeepTeamAdapter
+from security_eval.modules.task2.dynamic_test_adapter import DynamicTestAdapter
 from security_eval.modules.task2.models import TASK2_CATEGORIES, JudgeVerdict, Task2Case
 from security_eval.modules.task2.scoring import (
     combine_scores,
@@ -127,7 +127,7 @@ class Task2Module:
                 Issue(
                     severity="warning",
                     code="DEPENDENCY_ERROR",
-                    message="DeepTeam is unavailable; benchmark mode remains usable",
+                    message="Dynamic test engine is unavailable; benchmark mode remains usable",
                 )
             )
         return issues
@@ -212,7 +212,7 @@ class Task2Module:
         if self._dynamic_adapter is not None:
             return self._dynamic_adapter
         model = getattr(context.settings, "judge_model", "gpt-4o-mini")
-        return DeepTeamAdapter(
+        return DynamicTestAdapter(
             judge_client=context.judge_client,
             model_name=model,
         )

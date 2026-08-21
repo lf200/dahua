@@ -1,4 +1,4 @@
-"""Lazy DeepTeam 1.0.7 boundary for task 2 dynamic case generation."""
+"""Lazy Dynamic test engine 1.0.7 boundary for task 2 dynamic case generation."""
 
 from __future__ import annotations
 
@@ -98,23 +98,23 @@ SLUGS = {
 
 
 @dataclass(frozen=True)
-class DeepTeamAPI:
+class DynamicTestAPI:
     AttackEngine: type
-    DeepEvalBaseLLM: type
+    EvaluationBaseLLM: type
     EvaluationExample: type
     vulnerabilities: dict[Task2Category, type]
 
 
-def _configure_deepteam_privacy() -> None:
+def _configure_dynamic_test_privacy() -> None:
     os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] = "YES"
     os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] = "YES"
 
 
-def _load_api() -> DeepTeamAPI:
-    _configure_deepteam_privacy()
+def _load_api() -> DynamicTestAPI:
+    _configure_dynamic_test_privacy()
     from deepteam.attacks.attack_engine import AttackEngine
     from deepteam.metrics import EvaluationExample
-    from deepeval.models import DeepEvalBaseLLM
+    from deepeval.models import DeepEvalBaseLLM as EvaluationBaseLLM
     from deepteam.vulnerabilities import (
         Bias,
         GraphicContent,
@@ -124,9 +124,9 @@ def _load_api() -> DeepTeamAPI:
         Toxicity,
     )
 
-    return DeepTeamAPI(
+    return DynamicTestAPI(
         AttackEngine=AttackEngine,
-        DeepEvalBaseLLM=DeepEvalBaseLLM,
+        EvaluationBaseLLM=EvaluationBaseLLM,
         EvaluationExample=EvaluationExample,
         vulnerabilities={
             "IllegalActivity": IllegalActivity,
@@ -139,17 +139,17 @@ def _load_api() -> DeepTeamAPI:
     )
 
 
-class DeepTeamAdapter:
+class DynamicTestAdapter:
     def __init__(
         self,
         *,
-        api_loader: Callable[[], DeepTeamAPI] = _load_api,
+        api_loader: Callable[[], DynamicTestAPI] = _load_api,
         simulator_model: object | str | None = None,
         evaluation_model: object | str | None = None,
         judge_client: object | None = None,
         model_name: str = "task2-judge-client",
     ) -> None:
-        _configure_deepteam_privacy()
+        _configure_dynamic_test_privacy()
         self._api_loader = api_loader
         self.simulator_model = simulator_model
         self.evaluation_model = evaluation_model
@@ -178,7 +178,7 @@ class DeepTeamAdapter:
             api = self._api_loader()
         except (ImportError, ModuleNotFoundError) as exc:
             raise DependencyError(
-                "DeepTeam 1.0.7 is required for task 2 dynamic mode"
+                "Dynamic test engine is required for task 2 dynamic mode"
             ) from exc
 
         simulator_model = self._resolve_simulator_model(api)
@@ -237,9 +237,9 @@ class DeepTeamAdapter:
                         Task2Case(
                             case_id=f"t2-{SLUGS[category]}-dynamic-{seed}-{index}",
                             source="dynamic",
-                            engine="deepteam",
+                            engine="dynamic_test",
                             category=category,
-                            scenario="deepteam_dynamic_variant",
+                            scenario="dynamic_test_variant",
                             messages=[{"role": "user", "content": prompt}],
                             expected_action=EXPECTED_ACTIONS[category],
                             expected_behavior=EVALUATION_GUIDELINES[category][0],
@@ -262,10 +262,10 @@ class DeepTeamAdapter:
         finally:
             random.setstate(random_state)
         if not cases:
-            raise CaseEvaluationError("DeepTeam returned no usable variants")
+            raise CaseEvaluationError("Dynamic test engine returned no usable variants")
         return cases
 
-    def _resolve_simulator_model(self, api: DeepTeamAPI):
+    def _resolve_simulator_model(self, api: DynamicTestAPI):
         if self.simulator_model is not None:
             return self.simulator_model
         if self.judge_client is None:
@@ -273,7 +273,7 @@ class DeepTeamAdapter:
 
         client = self.judge_client
         model_name = self.model_name
-        base_class = api.DeepEvalBaseLLM
+        base_class = api.EvaluationBaseLLM
 
         class CoreJudgeClientModel(base_class):
             def __init__(self):
@@ -312,13 +312,13 @@ def _generation_error_case(
     class_name: str,
     vulnerability_type: str,
 ) -> Task2Case:
-    message = f"DeepTeam returned no usable variants for {category}"
+    message = f"Dynamic test engine returned no usable variants for {category}"
     return Task2Case(
         case_id=f"t2-{SLUGS[category]}-dynamic-{seed}-generation-error",
         source="dynamic",
-        engine="deepteam",
+        engine="dynamic_test",
         category=category,
-        scenario="deepteam_generation_error",
+        scenario="dynamic_test_generation_error",
         messages=[
             {
                 "role": "user",

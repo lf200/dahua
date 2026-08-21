@@ -8,12 +8,12 @@ import pytest
 from pydantic import BaseModel
 
 from security_eval.errors import DependencyError
-from security_eval.modules.task2.deepteam_adapter import (
+from security_eval.modules.task2.dynamic_test_adapter import (
     EVALUATION_EXAMPLES,
     EVALUATION_GUIDELINES,
     VULNERABILITY_IMPORTS,
-    DeepTeamAdapter,
-    _configure_deepteam_privacy,
+    DynamicTestAdapter,
+    _configure_dynamic_test_privacy,
     _load_api,
 )
 from security_eval.modules.task2.models import TASK2_CATEGORIES, Task2Case
@@ -52,13 +52,13 @@ class FakeVulnerability:
 def fake_api():
     return SimpleNamespace(
         AttackEngine=FakeAttackEngine,
-        DeepEvalBaseLLM=FakeDeepEvalBaseLLM,
+        EvaluationBaseLLM=FakeEvaluationBaseLLM,
         EvaluationExample=FakeEvaluationExample,
         vulnerabilities={category: FakeVulnerability for category in TASK2_CATEGORIES},
     )
 
 
-class FakeDeepEvalBaseLLM:
+class FakeEvaluationBaseLLM:
     def __init__(self, model_name=None):
         self.model_name = model_name
         self.model = self.load_model()
@@ -81,11 +81,11 @@ def test_public_vulnerability_mapping_covers_exact_task_categories() -> None:
     assert all(len(EVALUATION_EXAMPLES[category]) >= 2 for category in TASK2_CATEGORIES)
 
 
-def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
+def test_dynamic_test_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
     monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
     monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
 
-    _configure_deepteam_privacy()
+    _configure_dynamic_test_privacy()
 
     assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
     assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
@@ -95,7 +95,7 @@ def test_adapter_constructor_forces_telemetry_opt_out(monkeypatch) -> None:
     monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
     monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
 
-    DeepTeamAdapter(api_loader=fake_api, simulator_model="judge-model")
+    DynamicTestAdapter(api_loader=fake_api, simulator_model="judge-model")
 
     assert os.environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
     assert os.environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
@@ -129,14 +129,14 @@ def test_generate_normalizes_variants_and_preserves_calibration(
 ) -> None:
     FakeAttackEngine.created.clear()
     FakeVulnerability.created.clear()
-    adapter = DeepTeamAdapter(api_loader=fake_api, simulator_model="judge-model")
+    adapter = DynamicTestAdapter(api_loader=fake_api, simulator_model="judge-model")
 
     cases = adapter.generate(["Bias", "Toxicity"], profile=profile, seed=17)
 
     assert len(cases) == 2 * per_category
     assert all(isinstance(case, Task2Case) for case in cases)
     assert {case.category for case in cases} == {"Bias", "Toxicity"}
-    assert all(case.source == "dynamic" and case.engine == "deepteam" for case in cases)
+    assert all(case.source == "dynamic" and case.engine == "dynamic_test" for case in cases)
     assert all(
         set(case.model_dump())
         == {
@@ -164,7 +164,7 @@ def test_generate_normalizes_variants_and_preserves_calibration(
 
 
 def test_same_seed_produces_same_ids_and_messages() -> None:
-    adapter = DeepTeamAdapter(api_loader=fake_api, simulator_model="judge-model")
+    adapter = DynamicTestAdapter(api_loader=fake_api, simulator_model="judge-model")
 
     first = adapter.generate(["Misinformation"], profile="full", seed=23)
     second = adapter.generate(["Misinformation"], profile="full", seed=23)
@@ -186,13 +186,13 @@ def test_full_profile_preserves_filtered_variants_from_each_category() -> None:
 
     api = SimpleNamespace(
         AttackEngine=FakeAttackEngine,
-        DeepEvalBaseLLM=FakeDeepEvalBaseLLM,
+        EvaluationBaseLLM=FakeEvaluationBaseLLM,
         EvaluationExample=FakeEvaluationExample,
         vulnerabilities={
             category: FilteringVulnerability for category in TASK2_CATEGORIES
         },
     )
-    adapter = DeepTeamAdapter(api_loader=lambda: api, simulator_model="judge-model")
+    adapter = DynamicTestAdapter(api_loader=lambda: api, simulator_model="judge-model")
 
     cases = adapter.generate(["Bias", "Toxicity"], profile="full", seed=17)
 
@@ -209,29 +209,29 @@ def test_generate_preserves_other_categories_and_marks_empty_category() -> None:
 
     api = SimpleNamespace(
         AttackEngine=FakeAttackEngine,
-        DeepEvalBaseLLM=FakeDeepEvalBaseLLM,
+        EvaluationBaseLLM=FakeEvaluationBaseLLM,
         EvaluationExample=FakeEvaluationExample,
         vulnerabilities={
             **{category: FakeVulnerability for category in TASK2_CATEGORIES},
             "Bias": EmptyVulnerability,
         },
     )
-    adapter = DeepTeamAdapter(api_loader=lambda: api, simulator_model="judge-model")
+    adapter = DynamicTestAdapter(api_loader=lambda: api, simulator_model="judge-model")
 
     cases = adapter.generate(["Bias", "Toxicity"], profile="full", seed=17)
 
     bias = [case for case in cases if case.category == "Bias"]
     toxicity = [case for case in cases if case.category == "Toxicity"]
     assert len(bias) == 1
-    assert bias[0].scenario == "deepteam_generation_error"
+    assert bias[0].scenario == "dynamic_test_generation_error"
     assert bias[0].metadata["generation_error"]
     assert bias[0].metadata["returned_variations"] == 0
     assert len(toxicity) == 3
 
 
-def test_core_judge_client_is_bridged_to_deepeval_schema_generation() -> None:
+def test_core_judge_client_is_bridged_to_schema_generation() -> None:
     FakeVulnerability.created.clear()
-    adapter = DeepTeamAdapter(
+    adapter = DynamicTestAdapter(
         api_loader=fake_api,
         judge_client=StructuredJudgeClient(),
         model_name="custom-openai-compatible-model",
@@ -240,7 +240,7 @@ def test_core_judge_client_is_bridged_to_deepeval_schema_generation() -> None:
     adapter.generate(["Bias"], profile="quick", seed=5)
 
     model = FakeVulnerability.created[0]["simulator_model"]
-    assert isinstance(model, FakeDeepEvalBaseLLM)
+    assert isinstance(model, FakeEvaluationBaseLLM)
     assert model.get_model_name() == "custom-openai-compatible-model"
     assert model.load_model().__class__ is StructuredJudgeClient
     assert (
@@ -252,12 +252,12 @@ def test_core_judge_client_is_bridged_to_deepeval_schema_generation() -> None:
     ) == GeneratedSchema(input="generated through the frozen judge client")
 
 
-def test_missing_deepteam_is_dependency_error() -> None:
+def test_missing_dynamic_engine_is_dependency_error() -> None:
     def missing_api():
         raise ModuleNotFoundError("deepteam")
 
-    adapter = DeepTeamAdapter(api_loader=missing_api)
+    adapter = DynamicTestAdapter(api_loader=missing_api)
 
     assert adapter.is_available() is False
-    with pytest.raises(DependencyError, match="DeepTeam 1.0.7 is required"):
+    with pytest.raises(DependencyError, match="Dynamic test engine is required"):
         adapter.generate(["Bias"], profile="quick", seed=1)

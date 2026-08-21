@@ -5,7 +5,7 @@
 > current workspace. Do not dispatch subagents unless the user explicitly asks.
 
 **Goal:** Deliver developer C's contract-valid task 2 module, a 90-case
-uniform benchmark, DeepTeam dynamic adaptation, scoring, fixture, and offline
+uniform benchmark, dynamic test engine dynamic adaptation, scoring, fixture, and offline
 tests without modifying another owner's files.
 
 **Architecture:** Benchmark and dynamic inputs normalize to a private
@@ -14,7 +14,7 @@ normalizes every exception, sanitizes every contract-bound value, and produces
 `CaseResult`. Static and dynamic aggregates remain separate and hybrid combines
 them only after category selection.
 
-**Tech Stack:** Python 3.11 target, Pydantic v2, PyYAML, DeepTeam 1.0.7,
+**Tech Stack:** Python 3.11 target, Pydantic v2, PyYAML, dynamic test engine 1.0.7,
 pytest, JSONL, SHA-256.
 
 **Spec:** `security_eval/modules/task2/HANDOFF.md`
@@ -28,11 +28,11 @@ pytest, JSONL, SHA-256.
   quick profile contains exactly 12, two per category.
 - Static cases contain only evaluation fields required by `Task2Case` and use
   empty metadata.
-- Unit tests never call a real model or DeepTeam network service.
+- Unit tests never call a real model or dynamic test engine network service.
 - All inputs, outputs, evidence, reasons, metadata, and errors are passed
   through `RunContext.sanitize_value` before entering a public contract.
-- DeepTeam is imported only in `security_eval/modules/task2/deepteam_adapter.py`.
-- Do not import Flask, AgentDojo, task1, task4, routes, storage, or report code.
+- dynamic test engine is imported only in `security_eval/modules/task2/dynamic_test_adapter.py`.
+- Do not import Flask, task1, task4, routes, storage, or report code.
 - Do not commit or change branches unless the user separately requests it;
   inspect only the owned paths at each checkpoint.
 
@@ -134,34 +134,34 @@ def test_weighted_score_and_over_refusal_cap():
   literal statuses.
 - [ ] Run scoring tests and inspect the Task 2 diff.
 
-### Task 3: DeepTeam 1.0.7 Adapter
+### Task 3: dynamic test engine 1.0.7 Adapter
 
 **Files:**
 
-- Create: `security_eval/modules/task2/deepteam_adapter.py`
-- Test: `tests/task2/test_deepteam_adapter.py`
+- Create: `security_eval/modules/task2/dynamic_test_adapter.py`
+- Test: `tests/task2/test_dynamic_test_adapter.py`
 
 **Interfaces:**
 
-- Produces `DeepTeamAdapter.is_available() -> bool`,
-  `DeepTeamAdapter.generate(categories, profile, seed) -> list[Task2Case]`,
+- Produces `DynamicTestAdapter.is_available() -> bool`,
+  `DynamicTestAdapter.generate(categories, profile, seed) -> list[Task2Case]`,
   `VULNERABILITY_IMPORTS`, `EVALUATION_GUIDELINES`, and
   `EVALUATION_EXAMPLES`.
 - Dynamic IDs are deterministic from category, seed, and variant index.
 
-- [ ] Download the DeepTeam 1.0.7 wheel without installing it, inspect public
+- [ ] Download the dynamic test engine 1.0.7 wheel without installing it, inspect public
   imports and constructor signatures, and record only the compatible import
   paths in the adapter.
-- [ ] Write failing tests that inject fake DeepTeam modules and assert all six
+- [ ] Write failing tests that inject fake dynamic test engine modules and assert all six
   vulnerability types, guideline/example attachment, deterministic seed,
   one quick variant, three full variants, category filtering, and
-  `DependencyError` when DeepTeam is absent.
+  `DependencyError` when dynamic test engine is absent.
 - [ ] Run adapter tests and confirm missing implementation failures.
 - [ ] Implement lazy imports and a small compatibility boundary around
   `AttackEngine`, vulnerability objects, `EvaluationExample`, and framework
   output normalization. Never return a third-party object.
 - [ ] Run adapter tests and verify importing `Task2Module` does not import
-  `deepteam` eagerly.
+  `dynamic engine dependency` eagerly.
 
 ### Task 4: Protocol Module and Three Execution Modes
 
@@ -192,7 +192,7 @@ def test_weighted_score_and_over_refusal_cap():
   `CaseResult`.
 - [ ] Normalize `EvaluationError`, Pydantic errors, and unexpected exceptions
   with `normalize_exception`; make the affected case `invalid` and continue.
-- [ ] Implement benchmark, dynamic, and hybrid orchestration. When DeepTeam is
+- [ ] Implement benchmark, dynamic, and hybrid orchestration. When dynamic test engine is
   missing, add a sanitized `DEPENDENCY_ERROR`; hybrid preserves static cases and
   dynamic-only returns a valid empty `TaskResult` with unknown risk.
 - [ ] Build `TaskResult`, validate it again with `TaskResult.model_validate`,
@@ -218,7 +218,7 @@ def test_weighted_score_and_over_refusal_cap():
 - The fixture is accepted by `TaskResult.model_validate_json`.
 
 - [ ] Write failing delivery tests for manifest hashes and counts, module
-  manifest/metadata equality, exact dependency pin `deepteam==1.0.7`, fixture
+  manifest/metadata equality, exact task dependency pin, fixture
   validation, and fixture coverage of compliant refusal, unsafe answer,
   over-refusal, and invalid.
 - [ ] Run delivery tests and confirm missing-file failures.
