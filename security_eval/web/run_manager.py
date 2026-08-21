@@ -22,7 +22,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import datetime, timezone
 from typing import Any, Callable, Protocol
 
-from security_eval.contracts import RunReport, RunRequest
+from security_eval.contracts import Estimate, RunReport, RunRequest
 from security_eval.errors import ConfigurationError
 from security_eval.web.storage import RunStorage, WebRunStatus
 
@@ -33,13 +33,17 @@ logger = logging.getLogger(__name__)
 class EvaluationExecutor(Protocol):
     """Small public surface required from EvaluationService or a fake."""
 
+    def estimate(
+        self,
+        request: RunRequest,
+    ) -> list[Estimate]: ...
+
     def execute(
         self,
         request: RunRequest,
         *,
         run_id: str | None = None,
-    ) -> RunReport:
-        ...
+    ) -> RunReport: ...
 
 
 RunIdFactory = Callable[[], str]
@@ -50,10 +54,7 @@ def generate_run_id() -> str:
 
     now = datetime.now(timezone.utc)
 
-    return (
-        f"{now.strftime('%Y%m%dT%H%M%SZ')}-"
-        f"{uuid.uuid4().hex[:8]}"
-    )
+    return f"{now.strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
 
 
 class RunManager:
@@ -103,9 +104,7 @@ class RunManager:
         #
         # Recover stale queued/running states and clear the stale
         # filesystem lock before accepting new runs.
-        self.recovered_run_ids = (
-            self.storage.recover_after_restart()
-        )
+        self.recovered_run_ids = self.storage.recover_after_restart()
 
     # ========================================================
     # Public API
@@ -122,22 +121,16 @@ class RunManager:
         The actual evaluation continues in the background.
         """
 
-        validated = RunRequest.model_validate(
-            request
-        )
+        validated = RunRequest.model_validate(request)
 
         # Authorization should fail immediately at the HTTP boundary.
         #
         # Otherwise POST /runs would appear successful and the run
         # would only fail later in the background thread.
         if not validated.authorized_target:
-            raise ConfigurationError(
-                "Target authorization must be confirmed"
-            )
+            raise ConfigurationError("Target authorization must be confirmed")
 
-        run_id = self.storage.validate_run_id(
-            self._run_id_factory()
-        )
+        run_id = self.storage.validate_run_id(self._run_id_factory())
 
         # IMPORTANT:
         #
@@ -149,15 +142,11 @@ class RunManager:
         #
         # EvaluationService.execute() owns that directory creation
         # and uses exist_ok=False.
-        self.storage.acquire_run_lock(
-            run_id
-        )
+        self.storage.acquire_run_lock(run_id)
 
         try:
             with self._mutex:
-                self._states[
-                    run_id
-                ] = "queued"
+                self._states[run_id] = "queued"
 
                 future = self._executor.submit(
                     self._execute_run,
@@ -165,16 +154,12 @@ class RunManager:
                     validated,
                 )
 
-                self._futures[
-                    run_id
-                ] = future
+                self._futures[run_id] = future
 
         except Exception:
             # If submitting the worker itself fails, there is no
             # background task available to release the lock.
-            self.storage.release_run_lock(
-                run_id
-            )
+            self.storage.release_run_lock(run_id)
 
             with self._mutex:
                 self._states.pop(
@@ -191,6 +176,16 @@ class RunManager:
 
         return run_id
 
+    def estimate(
+        self,
+        request: RunRequest,
+    ) -> list[Estimate]:
+        """Return public module estimates without starting a run."""
+
+        validated = RunRequest.model_validate(request)
+
+        return list(self.service.estimate(validated))
+
     def get_status(
         self,
         run_id: str,
@@ -206,33 +201,23 @@ class RunManager:
         state and persists it once the directory becomes available.
         """
 
-        run_id = self.storage.validate_run_id(
-            run_id
-        )
+        run_id = self.storage.validate_run_id(run_id)
 
         # First prefer persisted data.
-        if self.storage.run_exists(
-            run_id
-        ):
+        if self.storage.run_exists(run_id):
             # report.json is authoritative once it exists.
             #
             # This also repairs a stale queued/running status if the
             # process managed to save report.json but was interrupted
             # before final status.json was written.
-            report = self.storage.load_report(
-                run_id
-            )
+            report = self.storage.load_report(run_id)
 
-            status = self.storage.load_status(
-                run_id
-            )
+            status = self.storage.load_status(run_id)
 
             if report is not None:
                 if (
                     status is None
-                    or status.get(
-                        "status"
-                    ) != report.status
+                    or status.get("status") != report.status
                     or not status.get(
                         "report_available",
                         False,
@@ -250,18 +235,14 @@ class RunManager:
 
         # No durable status yet. Check the active in-memory run.
         with self._mutex:
-            transient = self._states.get(
-                run_id
-            )
+            transient = self._states.get(run_id)
 
         if transient is None:
             return None
 
         # As soon as the core creates the run directory, make the
         # transient state durable.
-        if self.storage.run_exists(
-            run_id
-        ):
+        if self.storage.run_exists(run_id):
             try:
                 return self.storage.save_status(
                     run_id,
@@ -293,18 +274,12 @@ class RunManager:
     ) -> RunReport | None:
         """Return the persisted report when available."""
 
-        run_id = self.storage.validate_run_id(
-            run_id
-        )
+        run_id = self.storage.validate_run_id(run_id)
 
-        if not self.storage.run_exists(
-            run_id
-        ):
+        if not self.storage.run_exists(run_id):
             return None
 
-        return self.storage.load_report(
-            run_id
-        )
+        return self.storage.load_report(run_id)
 
     def is_active(
         self,
@@ -312,10 +287,7 @@ class RunManager:
         """Return whether one evaluation currently owns the run lock."""
 
         try:
-            return (
-                self.storage.get_active_run_id()
-                is not None
-            )
+            return self.storage.get_active_run_id() is not None
 
         except (
             OSError,
@@ -372,14 +344,11 @@ class RunManager:
             # to be persisted under this run.
             if report.run_id != run_id:
                 raise ValueError(
-                    "EvaluationService returned a report "
-                    "with a different run_id"
+                    "EvaluationService returned a report with a different run_id"
                 )
 
             # report.json is the authoritative final result.
-            self.storage.save_report(
-                report
-            )
+            self.storage.save_report(report)
 
             # status.json is only a lightweight view of that result.
             #
@@ -411,9 +380,7 @@ class RunManager:
                 "failed",
             )
 
-            self._persist_failure_status(
-                run_id
-            )
+            self._persist_failure_status(run_id)
 
             logger.exception(
                 "Evaluation run %s failed",
@@ -426,9 +393,7 @@ class RunManager:
             # Success, partial and failure must all release the single
             # active-run slot.
             try:
-                self.storage.release_run_lock(
-                    run_id
-                )
+                self.storage.release_run_lock(run_id)
 
             except Exception:
                 # Do not replace the real evaluation result/exception
@@ -459,9 +424,7 @@ class RunManager:
         """
 
         try:
-            if not self.storage.run_exists(
-                run_id
-            ):
+            if not self.storage.run_exists(run_id):
                 run_dir = self.storage.run_directory(
                     run_id,
                     must_exist=False,
@@ -480,10 +443,7 @@ class RunManager:
             self.storage.save_status(
                 run_id,
                 "failed",
-                message=(
-                    "Evaluation failed before a complete "
-                    "report was produced."
-                ),
+                message=("Evaluation failed before a complete report was produced."),
             )
 
         except Exception:
@@ -504,6 +464,4 @@ class RunManager:
         """Update one transient run state safely."""
 
         with self._mutex:
-            self._states[
-                run_id
-            ] = status
+            self._states[run_id] = status

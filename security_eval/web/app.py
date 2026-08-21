@@ -37,14 +37,13 @@ from security_eval.web.storage import RunStorage
 # Defaults
 # ============================================================
 
-DEFAULT_OUTPUT_ROOT = Path(
-    "data/runs"
-)
+DEFAULT_OUTPUT_ROOT = Path("data/runs")
 
 
 # ============================================================
 # Application factory
 # ============================================================
+
 
 def create_app(
     *,
@@ -88,9 +87,7 @@ def create_app(
     """
 
     if service is None:
-        raise ValueError(
-            "create_app() requires an evaluation service"
-        )
+        raise ValueError("create_app() requires an evaluation service")
 
     # --------------------------------------------------------
     # Create Flask application
@@ -103,13 +100,9 @@ def create_app(
     )
 
     app.config.update(
-        TESTING=bool(
-            testing
-        ),
-
+        TESTING=bool(testing),
         # Keep JSON output order predictable.
         JSON_SORT_KEYS=False,
-
         # Jinja autoescaping remains enabled by Flask for HTML.
     )
 
@@ -117,9 +110,7 @@ def create_app(
     # Web persistence
     # --------------------------------------------------------
 
-    storage = RunStorage(
-        output_root
-    )
+    storage = RunStorage(output_root)
 
     # Recover stale "queued" / "running" state after a process
     # restart.
@@ -163,51 +154,34 @@ def create_app(
     # - explicit dependency ownership.
     # --------------------------------------------------------
 
-    app.extensions[
-        "security_eval.storage"
-    ] = storage
+    app.extensions["security_eval.storage"] = storage
 
-    app.extensions[
-        "security_eval.run_manager"
-    ] = manager
+    app.extensions["security_eval.run_manager"] = manager
 
-    app.extensions[
-        "security_eval.service"
-    ] = service
+    app.extensions["security_eval.service"] = service
 
     # --------------------------------------------------------
     # Register HTTP routes
     # --------------------------------------------------------
 
-    web_blueprint = (
-        create_routes_blueprint(
-            manager=manager,
-            public_settings=(
-                public_settings
-                or {}
-            ),
-        )
+    web_blueprint = create_routes_blueprint(
+        manager=manager,
+        public_settings=(public_settings or {}),
     )
 
-    app.register_blueprint(
-        web_blueprint
-    )
+    app.register_blueprint(web_blueprint)
 
     # --------------------------------------------------------
     # Error handlers
     # --------------------------------------------------------
 
-    _register_error_handlers(
-        app
-    )
+    _register_error_handlers(app)
 
     # --------------------------------------------------------
     # Browser security headers
     # --------------------------------------------------------
 
-    _register_response_headers(
-        app
-    )
+    _register_response_headers(app)
 
     return app
 
@@ -215,6 +189,7 @@ def create_app(
 # ============================================================
 # Error pages
 # ============================================================
+
 
 def _register_error_handlers(
     app: Flask,
@@ -230,9 +205,7 @@ def _register_error_handlers(
                 "error.html",
                 status_code=404,
                 title="页面不存在",
-                message=(
-                    "没有找到你请求的测评页面或运行记录。"
-                ),
+                message=("没有找到你请求的测评页面或运行记录。"),
             ),
             404,
         )
@@ -246,9 +219,7 @@ def _register_error_handlers(
                 "error.html",
                 status_code=405,
                 title="请求方式不允许",
-                message=(
-                    "当前页面不支持这种请求方式。"
-                ),
+                message=("当前页面不支持这种请求方式。"),
             ),
             405,
         )
@@ -264,10 +235,7 @@ def _register_error_handlers(
                 "error.html",
                 status_code=500,
                 title="系统错误",
-                message=(
-                    "Web 层处理请求时发生错误，"
-                    "请查看本地日志或重新运行测评。"
-                ),
+                message=("Web 层处理请求时发生错误，请查看本地日志或重新运行测评。"),
             ),
             500,
         )
@@ -276,6 +244,7 @@ def _register_error_handlers(
 # ============================================================
 # Response headers
 # ============================================================
+
 
 def _register_response_headers(
     app: Flask,
@@ -286,7 +255,6 @@ def _register_response_headers(
     def add_security_headers(
         response: Response,
     ) -> Response:
-
         response.headers.setdefault(
             "X-Content-Type-Options",
             "nosniff",

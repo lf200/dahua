@@ -42,9 +42,7 @@ WebRunStatus = Literal[
 
 
 # Keep the same run_id rule as contracts.py.
-RUN_ID_PATTERN = re.compile(
-    r"^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$"
-)
+RUN_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{7,63}$")
 
 WEB_RUN_STATUSES = frozenset(
     {
@@ -85,11 +83,7 @@ class RunStorage:
         self,
         output_root: str | Path,
     ) -> None:
-        self.output_root = (
-            Path(output_root)
-            .expanduser()
-            .resolve()
-        )
+        self.output_root = Path(output_root).expanduser().resolve()
 
         # Creating the top-level runs directory is safe.
         # We deliberately do NOT create a specific run directory here.
@@ -111,10 +105,7 @@ class RunStorage:
     ) -> str:
         """Validate and return a contract-compatible run id."""
 
-        if (
-            not isinstance(run_id, str)
-            or not RUN_ID_PATTERN.fullmatch(run_id)
-        ):
+        if not isinstance(run_id, str) or not RUN_ID_PATTERN.fullmatch(run_id):
             raise ValueError(
                 "Invalid run_id: expected 8-64 characters using only "
                 "letters, digits, '_' or '-', starting with a letter "
@@ -136,9 +127,7 @@ class RunStorage:
 
         run_id = self.validate_run_id(run_id)
 
-        candidate = (
-            self.output_root / run_id
-        ).resolve()
+        candidate = (self.output_root / run_id).resolve()
 
         self._ensure_within(
             candidate,
@@ -146,13 +135,8 @@ class RunStorage:
         )
 
         if must_exist:
-            if (
-                not candidate.exists()
-                or not candidate.is_dir()
-            ):
-                raise FileNotFoundError(
-                    f"Run not found: {run_id}"
-                )
+            if not candidate.exists() or not candidate.is_dir():
+                raise FileNotFoundError(f"Run not found: {run_id}")
 
         return candidate
 
@@ -187,13 +171,8 @@ class RunStorage:
 
         path = run_dir / STATUS_FILENAME
 
-        if (
-            must_exist
-            and not path.is_file()
-        ):
-            raise FileNotFoundError(
-                f"Status not found for run: {run_id}"
-            )
+        if must_exist and not path.is_file():
+            raise FileNotFoundError(f"Status not found for run: {run_id}")
 
         return path
 
@@ -212,13 +191,8 @@ class RunStorage:
 
         path = run_dir / REPORT_FILENAME
 
-        if (
-            must_exist
-            and not path.is_file()
-        ):
-            raise FileNotFoundError(
-                f"Report not found for run: {run_id}"
-            )
+        if must_exist and not path.is_file():
+            raise FileNotFoundError(f"Report not found for run: {run_id}")
 
         return path
 
@@ -244,9 +218,7 @@ class RunStorage:
         run_id = self.validate_run_id(run_id)
 
         if status not in WEB_RUN_STATUSES:
-            raise ValueError(
-                f"Unsupported web run status: {status}"
-            )
+            raise ValueError(f"Unsupported web run status: {status}")
 
         run_dir = self.run_directory(
             run_id,
@@ -257,9 +229,7 @@ class RunStorage:
             "run_id": run_id,
             "status": status,
             "updated_at": self._utc_now_iso(),
-            "report_available": (
-                run_dir / REPORT_FILENAME
-            ).is_file(),
+            "report_available": (run_dir / REPORT_FILENAME).is_file(),
         }
 
         if message:
@@ -294,23 +264,15 @@ class RunStorage:
 
         payload = self._read_json_object(path)
 
-        stored_run_id = payload.get(
-            "run_id"
-        )
+        stored_run_id = payload.get("run_id")
 
-        stored_status = payload.get(
-            "status"
-        )
+        stored_status = payload.get("status")
 
         if stored_run_id != run_id:
-            raise ValueError(
-                f"status.json run_id mismatch for run: {run_id}"
-            )
+            raise ValueError(f"status.json run_id mismatch for run: {run_id}")
 
         if stored_status not in WEB_RUN_STATUSES:
-            raise ValueError(
-                f"Invalid status.json state for run: {run_id}"
-            )
+            raise ValueError(f"Invalid status.json state for run: {run_id}")
 
         return payload
 
@@ -325,27 +287,18 @@ class RunStorage:
         """Validate and atomically save a complete RunReport."""
 
         # Validate again at the web persistence boundary.
-        validated = RunReport.model_validate(
-            report
-        )
+        validated = RunReport.model_validate(report)
 
-        run_id = self.validate_run_id(
-            validated.run_id
-        )
+        run_id = self.validate_run_id(validated.run_id)
 
         run_dir = self.run_directory(
             run_id,
             must_exist=True,
         )
 
-        path = (
-            run_dir
-            / REPORT_FILENAME
-        )
+        path = run_dir / REPORT_FILENAME
 
-        payload = validated.model_dump(
-            mode="json"
-        )
+        payload = validated.model_dump(mode="json")
 
         with self._mutex:
             self._atomic_write_json(
@@ -373,18 +326,12 @@ class RunStorage:
         if not path.is_file():
             return None
 
-        payload = self._read_json_object(
-            path
-        )
+        payload = self._read_json_object(path)
 
-        report = RunReport.model_validate(
-            payload
-        )
+        report = RunReport.model_validate(payload)
 
         if report.run_id != run_id:
-            raise ValueError(
-                f"report.json run_id mismatch for run: {run_id}"
-            )
+            raise ValueError(f"report.json run_id mismatch for run: {run_id}")
 
         return report
 
@@ -398,10 +345,7 @@ class RunStorage:
     ) -> Path:
         """Location of the filesystem-backed active-run lock."""
 
-        return (
-            self.output_root
-            / ACTIVE_LOCK_FILENAME
-        )
+        return self.output_root / ACTIVE_LOCK_FILENAME
 
     def acquire_run_lock(
         self,
@@ -416,9 +360,7 @@ class RunStorage:
         EvaluationService creating the run directory later.
         """
 
-        run_id = self.validate_run_id(
-            run_id
-        )
+        run_id = self.validate_run_id(run_id)
 
         payload = {
             "run_id": run_id,
@@ -426,16 +368,10 @@ class RunStorage:
             "pid": os.getpid(),
         }
 
-        encoded = self._encode_json(
-            payload
-        )
+        encoded = self._encode_json(payload)
 
         with self._mutex:
-            flags = (
-                os.O_WRONLY
-                | os.O_CREAT
-                | os.O_EXCL
-            )
+            flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
 
             try:
                 fd = os.open(
@@ -447,15 +383,10 @@ class RunStorage:
             except FileExistsError as exc:
                 active = self.get_active_run_id()
 
-                suffix = (
-                    f": {active}"
-                    if active
-                    else ""
-                )
+                suffix = f": {active}" if active else ""
 
                 raise RuntimeError(
-                    "Another evaluation is already active"
-                    f"{suffix}"
+                    f"Another evaluation is already active{suffix}"
                 ) from exc
 
             try:
@@ -465,21 +396,14 @@ class RunStorage:
                     encoding="utf-8",
                     newline="\n",
                 ) as handle:
-
-                    handle.write(
-                        encoded
-                    )
+                    handle.write(encoded)
 
                     handle.flush()
 
-                    os.fsync(
-                        handle.fileno()
-                    )
+                    os.fsync(handle.fileno())
 
             except Exception:
-                self.active_lock_path.unlink(
-                    missing_ok=True
-                )
+                self.active_lock_path.unlink(missing_ok=True)
 
                 raise
 
@@ -493,25 +417,17 @@ class RunStorage:
         if not path.is_file():
             return None
 
-        payload = self._read_json_object(
-            path
-        )
+        payload = self._read_json_object(path)
 
-        run_id = payload.get(
-            "run_id"
-        )
+        run_id = payload.get("run_id")
 
         if not isinstance(
             run_id,
             str,
         ):
-            raise ValueError(
-                "Active-run lock is missing run_id"
-            )
+            raise ValueError("Active-run lock is missing run_id")
 
-        return self.validate_run_id(
-            run_id
-        )
+        return self.validate_run_id(run_id)
 
     def release_run_lock(
         self,
@@ -522,9 +438,7 @@ class RunStorage:
         A run is only allowed to release a lock that it owns.
         """
 
-        run_id = self.validate_run_id(
-            run_id
-        )
+        run_id = self.validate_run_id(run_id)
 
         with self._mutex:
             if not self.active_lock_path.exists():
@@ -534,13 +448,10 @@ class RunStorage:
 
             if active != run_id:
                 raise RuntimeError(
-                    "Cannot release active-run lock "
-                    f"for {run_id}; owned by {active}"
+                    f"Cannot release active-run lock for {run_id}; owned by {active}"
                 )
 
-            self.active_lock_path.unlink(
-                missing_ok=True
-            )
+            self.active_lock_path.unlink(missing_ok=True)
 
     # ========================================================
     # Restart recovery
@@ -571,9 +482,7 @@ class RunStorage:
 
             if self.active_lock_path.exists():
                 try:
-                    stale_active = (
-                        self.get_active_run_id()
-                    )
+                    stale_active = self.get_active_run_id()
 
                 except (
                     ValueError,
@@ -585,9 +494,7 @@ class RunStorage:
             candidates: set[str] = set()
 
             if stale_active is not None:
-                candidates.add(
-                    stale_active
-                )
+                candidates.add(stale_active)
 
             # Also recover status files that explicitly say
             # queued/running.
@@ -595,59 +502,38 @@ class RunStorage:
                 if not child.is_dir():
                     continue
 
-                if not RUN_ID_PATTERN.fullmatch(
-                    child.name
-                ):
+                if not RUN_ID_PATTERN.fullmatch(child.name):
                     continue
 
-                status_file = (
-                    child
-                    / STATUS_FILENAME
-                )
+                status_file = child / STATUS_FILENAME
 
                 if not status_file.is_file():
                     continue
 
                 try:
-                    payload = (
-                        self._read_json_object(
-                            status_file
-                        )
-                    )
+                    payload = self._read_json_object(status_file)
 
                 except (
                     ValueError,
                     OSError,
                     json.JSONDecodeError,
                 ):
-                    candidates.add(
-                        child.name
-                    )
+                    candidates.add(child.name)
 
                     continue
 
-                if payload.get(
-                    "status"
-                ) in {
+                if payload.get("status") in {
                     "queued",
                     "running",
                 }:
-                    candidates.add(
-                        child.name
-                    )
+                    candidates.add(child.name)
 
-            for run_id in sorted(
-                candidates
-            ):
-                if not self.run_exists(
-                    run_id
-                ):
+            for run_id in sorted(candidates):
+                if not self.run_exists(run_id):
                     continue
 
                 try:
-                    report = self.load_report(
-                        run_id
-                    )
+                    report = self.load_report(run_id)
 
                 except Exception:
                     # Corrupt / invalid report should not make
@@ -659,8 +545,7 @@ class RunStorage:
                         run_id,
                         report.status,
                         message=(
-                            "Status restored from the saved "
-                            "report after restart."
+                            "Status restored from the saved report after restart."
                         ),
                     )
 
@@ -668,21 +553,14 @@ class RunStorage:
                     self.save_status(
                         run_id,
                         "failed",
-                        message=(
-                            "Run was interrupted by an "
-                            "application restart."
-                        ),
+                        message=("Run was interrupted by an application restart."),
                     )
 
-                recovered.append(
-                    run_id
-                )
+                recovered.append(run_id)
 
             # For this single-process web application, a lock found
             # during startup belongs to the old process.
-            self.active_lock_path.unlink(
-                missing_ok=True
-            )
+            self.active_lock_path.unlink(missing_ok=True)
 
         return recovered
 
@@ -713,35 +591,19 @@ class RunStorage:
             )
             or not artifact_path.strip()
         ):
-            raise ValueError(
-                "artifact_path must be a non-empty relative path"
-            )
+            raise ValueError("artifact_path must be a non-empty relative path")
 
-        relative = Path(
-            artifact_path
-        )
+        relative = Path(artifact_path)
 
-        if (
-            relative.is_absolute()
-            or ".." in relative.parts
-        ):
-            raise ValueError(
-                "artifact_path must stay inside the run directory"
-            )
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("artifact_path must stay inside the run directory")
 
         run_dir = self.run_directory(
             run_id,
             must_exist=True,
-        ).resolve(
-            strict=True
-        )
+        ).resolve(strict=True)
 
-        candidate = (
-            run_dir
-            / relative
-        ).resolve(
-            strict=True
-        )
+        candidate = (run_dir / relative).resolve(strict=True)
 
         self._ensure_within(
             candidate,
@@ -749,9 +611,7 @@ class RunStorage:
         )
 
         if not candidate.is_file():
-            raise FileNotFoundError(
-                f"Artifact is not a file: {artifact_path}"
-            )
+            raise FileNotFoundError(f"Artifact is not a file: {artifact_path}")
 
         return candidate
 
@@ -760,13 +620,10 @@ class RunStorage:
     # ========================================================
 
     @staticmethod
-    def _utc_now_iso(
-    ) -> str:
+    def _utc_now_iso() -> str:
         """Return current UTC time in ISO-8601 format."""
 
-        return datetime.now(
-            timezone.utc
-        ).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     @staticmethod
     def _ensure_within(
@@ -776,9 +633,7 @@ class RunStorage:
         """Ensure candidate is contained by parent."""
 
         try:
-            candidate.relative_to(
-                parent
-            )
+            candidate.relative_to(parent)
 
         except ValueError as exc:
             raise ValueError(
@@ -814,10 +669,7 @@ class RunStorage:
         """
 
         if not path.parent.is_dir():
-            raise FileNotFoundError(
-                "Parent directory does not exist: "
-                f"{path.parent}"
-            )
+            raise FileNotFoundError(f"Parent directory does not exist: {path.parent}")
 
         fd, temp_name = tempfile.mkstemp(
             prefix=f".{path.name}.",
@@ -826,9 +678,7 @@ class RunStorage:
             text=True,
         )
 
-        temp_path = Path(
-            temp_name
-        )
+        temp_path = Path(temp_name)
 
         try:
             with os.fdopen(
@@ -837,20 +687,13 @@ class RunStorage:
                 encoding="utf-8",
                 newline="\n",
             ) as handle:
-
-                handle.write(
-                    cls._encode_json(
-                        payload
-                    )
-                )
+                handle.write(cls._encode_json(payload))
 
                 # Push Python's buffer to the OS.
                 handle.flush()
 
                 # Push the file contents toward disk before replace.
-                os.fsync(
-                    handle.fileno()
-                )
+                os.fsync(handle.fileno())
 
             # Atomic replacement of the destination.
             os.replace(
@@ -859,9 +702,7 @@ class RunStorage:
             )
 
         except Exception:
-            temp_path.unlink(
-                missing_ok=True
-            )
+            temp_path.unlink(missing_ok=True)
 
             raise
 
@@ -875,16 +716,12 @@ class RunStorage:
             "r",
             encoding="utf-8",
         ) as handle:
-            payload = json.load(
-                handle
-            )
+            payload = json.load(handle)
 
         if not isinstance(
             payload,
             dict,
         ):
-            raise ValueError(
-                f"Expected a JSON object in {path.name}"
-            )
+            raise ValueError(f"Expected a JSON object in {path.name}")
 
         return payload
