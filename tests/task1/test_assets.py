@@ -13,7 +13,7 @@ MODULE_MANIFEST = REPO_ROOT / "security_eval" / "modules" / "task1" / "module.js
 CONTRACT_FIXTURE = REPO_ROOT / "tests" / "contract_fixtures" / "task_1_result.json"
 
 
-def test_module_manifest_loads_task1_without_importing_optional_deepteam() -> None:
+def test_module_manifest_loads_task1_without_importing_optional_engine() -> None:
     manifest = load_module_manifest(MODULE_MANIFEST)
     registry = ModuleRegistry.from_manifests([MODULE_MANIFEST])
 

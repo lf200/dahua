@@ -5,31 +5,31 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from security_eval.errors import EvaluationTimeoutError
-from security_eval.modules.task1.deepteam_adapter import (
-    DeepTeamAdapter,
-    _configure_deepteam_privacy,
+from security_eval.modules.task1.dynamic_test_adapter import (
+    DynamicTestAdapter,
+    _configure_dynamic_test_privacy,
     _judge_model,
     _target_callback,
     build_category_runs,
 )
 
 
-def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
+def test_dynamic_test_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
     monkeypatch.setenv("DEEPTEAM_TELEMETRY_OPT_OUT", "NO")
     monkeypatch.setenv("DEEPEVAL_TELEMETRY_OPT_OUT", "NO")
 
-    _configure_deepteam_privacy()
+    _configure_dynamic_test_privacy()
 
     assert __import__("os").environ["DEEPTEAM_TELEMETRY_OPT_OUT"] == "YES"
     assert __import__("os").environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
 
 
-def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
+def test_empty_dynamic_result_becomes_invalid_case(context_factory) -> None:
     class EmptyBackend:
         def run_spec(self, context, category, spec, seed, ordinal_start):
             return []
 
-    adapter = DeepTeamAdapter(backend=EmptyBackend())
+    adapter = DynamicTestAdapter(backend=EmptyBackend())
 
     observations = adapter.run(context_factory(), ["prompt_injection"], "quick", 42)
 
@@ -38,7 +38,7 @@ def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
     assert observations[0].error.code == "CASE_ERROR"
 
 
-def test_deepteam_clients_stop_after_run_deadline() -> None:
+def test_dynamic_test_clients_stop_after_run_deadline() -> None:
     class Client:
         def complete(self, messages):
             raise AssertionError("expired runs must not call a model")
@@ -94,7 +94,7 @@ def test_context_hijack_uses_linear_jailbreaking_with_profile_turn_limit() -> No
     assert full[0].variations == 3
 
 
-def test_category_mappings_cover_required_deepteam_components() -> None:
+def test_category_mappings_cover_required_dynamic_components() -> None:
     mappings = {
         category: build_category_runs(category, "quick")[0]
         for category in ["prompt_injection", "role_jailbreak", "logic_trap"]

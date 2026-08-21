@@ -35,8 +35,8 @@ from security_eval.modules.task1.benchmark import (
     LoadedBenchmark,
     load_benchmark,
 )
-from security_eval.modules.task1.deepteam_adapter import (
-    DeepTeamAdapter,
+from security_eval.modules.task1.dynamic_test_adapter import (
+    DynamicTestAdapter,
     DynamicObservation,
 )
 from security_eval.modules.task1.scoring import (
@@ -70,11 +70,11 @@ class Task1Module:
         self,
         *,
         benchmark_root: Path = DEFAULT_BENCHMARK_ROOT,
-        adapter: DeepTeamAdapter | Any | None = None,
+        adapter: DynamicTestAdapter | Any | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
         self.benchmark_root = benchmark_root
-        self.adapter = adapter or DeepTeamAdapter()
+        self.adapter = adapter or DynamicTestAdapter()
         self._now = now or (lambda: datetime.now(timezone.utc))
 
     def metadata(self) -> ModuleMetadata:
@@ -95,7 +95,7 @@ class Task1Module:
             notes = ["Runs the immutable task 1 benchmark only."]
         elif request.mode == "dynamic":
             expected = dynamic_cases
-            notes = ["Runs DeepTeam against all five task 1 categories."]
+            notes = ["Runs Dynamic test engine against all five task 1 categories."]
         else:
             expected = benchmark_cases + dynamic_cases
             notes = [
@@ -296,7 +296,7 @@ class Task1Module:
                 case_id=observation.case_id,
                 task_id=1,
                 source="dynamic",
-                engine="deepteam",
+                engine="dynamic_test",
                 category=observation.category,
                 scenario=observation.scenario,
                 status="invalid",
@@ -327,7 +327,7 @@ class Task1Module:
                 case_id=observation.case_id,
                 task_id=1,
                 source="dynamic",
-                engine="deepteam",
+                engine="dynamic_test",
                 category=observation.category,
                 scenario=observation.scenario,
                 status=scored.status,
@@ -344,7 +344,7 @@ class Task1Module:
                 evidence=[
                     Evidence(
                         kind="model_output",
-                        summary="Target response to the DeepTeam attack",
+                        summary="Target response to the Dynamic test engine attack",
                         data=observation.attack_output,
                     ),
                     Evidence(
@@ -354,10 +354,10 @@ class Task1Module:
                     ),
                     Evidence(
                         kind="metric",
-                        summary="DeepTeam evaluation result",
+                        summary="Dynamic test engine evaluation result",
                         data={
-                            "score": observation.deepteam_score,
-                            "reason": observation.deepteam_reason,
+                            "score": observation.engine_score,
+                            "reason": observation.engine_reason,
                         },
                     ),
                     Evidence(
@@ -413,9 +413,9 @@ class Task1Module:
                 },
                 "recovery_probe": dynamic_observation.recovery_probe,
                 "expected_recovery": dynamic_observation.expected_recovery,
-                "deepteam": {
-                    "score": dynamic_observation.deepteam_score,
-                    "reason": dynamic_observation.deepteam_reason,
+                "dynamic_test": {
+                    "score": dynamic_observation.engine_score,
+                    "reason": dynamic_observation.engine_reason,
                 },
             }
         else:
@@ -432,7 +432,7 @@ class Task1Module:
                 "forbidden_outcomes": benchmark_case.forbidden_outcomes,
                 "rubric": benchmark_case.rubric.model_dump(),
                 "recovery_probe": benchmark_case.recovery_probe,
-                "deepteam": None,
+                "dynamic_test": None,
             }
         labels = benchmark.labels.categories[category]
         payload.update(
@@ -480,7 +480,7 @@ class Task1Module:
             case_id=case_id,
             task_id=1,
             source=source,
-            engine="benchmark" if source == "benchmark" else "deepteam",
+            engine="benchmark" if source == "benchmark" else "dynamic_test",
             category=category,
             scenario=scenario,
             status="invalid",
