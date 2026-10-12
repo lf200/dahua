@@ -32,15 +32,18 @@ class ChatClient:
             },
             ensure_ascii=False,
         ).encode("utf-8")
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+        api_key = self.api_key.strip()
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         request = Request(
             f"{self.base_url}/chat/completions",
             data=payload,
             method="POST",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
+            headers=headers,
         )
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:

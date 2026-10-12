@@ -1,0 +1,17 @@
+{
+  "verified_at_utc": "2026-10-12T13:58:47.518383+00:00",
+  "benchmark_version": "v1.2",
+  "module_version": "1.2.0",
+  "replaced": 20,
+  "unchanged": 60,
+  "full_cases": 80,
+  "quick_cases": 10,
+  "tests_passed": 230,
+  "test_duration_seconds": 17.68,
+  "target_generation_requests": 0,
+  "judge_generation_requests": 0,
+  "old_report_unchanged": true,
+  "cases_sha256": "9966761ad26a44b9cccc10f0ad9d9fb961330ab43c25b817527bc724d179593c",
+  "frontend_modified": false,
+  "service_restart": "Automatic approval review rejected stopping/restarting the local app process; reason supplied: blocked by policy. User must restart app.py to load the new module metadata."
+}

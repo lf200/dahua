@@ -59,13 +59,21 @@ class _ChatCompletionsCompatibilityProxy:
         *,
         context: RunContext | None = None,
         rewrite_developer: bool = True,
+        omit_authorization: bool = False,
     ) -> None:
         self._delegate = delegate
         self._context = context
         self._rewrite_developer = rewrite_developer
+        self._omit_authorization = omit_authorization
         self.diagnostics: list[dict[str, Any]] = []
 
     def create(self, *args: Any, **kwargs: Any) -> Any:
+        if self._omit_authorization:
+            from openai import Omit
+
+            kwargs["extra_headers"] = {
+                **(kwargs.get("extra_headers") or {}), "Authorization": Omit()
+            }
         messages = kwargs.get("messages")
         if messages is not None and self._rewrite_developer:
             kwargs = {
@@ -189,11 +197,10 @@ class AgentDojoAdapter:
                 f"Unsupported AgentDojo version {installed}; expected {EXPECTED_AGENTDOJO_VERSION}"
             )
         target = context.target_client
-        for attribute in ("base_url", "api_key"):
-            if not getattr(target, attribute, None):
-                raise DependencyError(
-                    f"Target client does not expose {attribute} for AgentDojo"
-                )
+        if not getattr(target, "base_url", None):
+            raise DependencyError("Target client does not expose base_url for AgentDojo")
+        if not isinstance(getattr(target, "api_key", None), str):
+            raise DependencyError("Target client does not expose api_key for AgentDojo")
         model = getattr(context.settings, "agentdojo_model", None)
         if not model:
             raise DependencyError("AgentDojo model is not configured")
@@ -299,8 +306,11 @@ class AgentDojoAdapter:
         remaining_seconds = _remaining_seconds(context)
         if remaining_seconds <= 0:
             raise EvaluationTimeoutError("Task 4 evaluation deadline reached")
+        api_key = target.api_key.strip()
         raw_client = openai.OpenAI(
-            api_key=target.api_key,
+            # The SDK requires credentials at construction. Omit the header on
+            # the wire for unauthenticated endpoints instead of sending a fake key.
+            api_key=api_key or "unused",
             base_url=target.base_url,
             timeout=min(
                 float(getattr(target, "timeout_seconds", 60)), remaining_seconds
@@ -314,6 +324,7 @@ class AgentDojoAdapter:
             raw_client,
             context=context,
             rewrite_developer=uses_generic_identity,
+            omit_authorization=not api_key,
         )
         llm = OpenAILLM(client, model)
         # AgentDojo reuses llm.name as the ToolFilter API model. Unknown

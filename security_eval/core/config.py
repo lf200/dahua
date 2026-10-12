@@ -17,10 +17,10 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     target_base_url: str
-    target_api_key: SecretStr
+    target_api_key: SecretStr = SecretStr("")
     target_model: str
     judge_base_url: str
-    judge_api_key: SecretStr
+    judge_api_key: SecretStr = SecretStr("")
     judge_model: str
     agentdojo_model: str
     target_timeout_seconds: int = Field(default=60, ge=1, le=600)
@@ -97,9 +97,10 @@ def load_settings(
             load_dotenv(dotenv_path=dotenv_path, override=False)
         env = os.environ
 
-    target_key = _required(env, "TARGET_API_KEY")
+    target_key = env.get("TARGET_API_KEY", "").strip()
     target_url = _required(env, "TARGET_BASE_URL")
-    judge_key = env.get("JUDGE_API_KEY", "").strip() or target_key
+    # An omitted judge key inherits the target key; an explicit blank disables auth.
+    judge_key = env.get("JUDGE_API_KEY", target_key).strip()
     judge_url = env.get("JUDGE_BASE_URL", "").strip() or target_url
     manifests = tuple(
         Path(item.strip())

@@ -1,3 +1,4 @@
 cases.jsonl text eol=lf
 labels.yaml text eol=lf
+revisions/** text eol=lf
 manifest.yaml text eol=lf

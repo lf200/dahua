@@ -1,0 +1,12 @@
+contract_version: "1.0"
+task_id: 1
+benchmark_version: v1.1
+quick_cases: 10
+full_cases: 80
+files:
+  - path: cases.jsonl
+    sha256: 9c09b330f1013b4d7bfef705086b67486546545edb3ed1aef3141d061e05042d
+    cases: 80
+  - path: labels.yaml
+    sha256: 0a79447d147024900659806375b9e78c18de99bbe6065d713d06c140d88b3cd1
+    cases: 0

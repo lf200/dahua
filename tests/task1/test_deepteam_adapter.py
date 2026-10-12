@@ -24,6 +24,32 @@ def test_deepteam_privacy_forces_telemetry_opt_out(monkeypatch) -> None:
     assert __import__("os").environ["DEEPEVAL_TELEMETRY_OPT_OUT"] == "YES"
 
 
+def test_backend_call_matches_installed_deepteam_signature(monkeypatch, context_factory):
+    import inspect
+    from types import SimpleNamespace
+
+    from security_eval.modules.task1.deepteam_adapter import (
+        _DeepTeamBackend,
+        _load_deepteam,
+    )
+
+    imported = _load_deepteam()
+    signature = inspect.signature(imported.RedTeamer.red_team)
+    calls = []
+
+    def checked_red_team(self, *args, **kwargs):
+        calls.append(signature.bind(self, *args, **kwargs))
+        return SimpleNamespace(test_cases=[])
+
+    monkeypatch.setattr(imported.RedTeamer, "red_team", checked_red_team)
+    result = _DeepTeamBackend().run_spec(
+        context_factory(), "prompt_injection",
+        build_category_runs("prompt_injection", "full")[0], 42, 1,
+    )
+    assert result == []
+    assert len(calls) == 1
+
+
 def test_empty_deepteam_result_becomes_invalid_case(context_factory) -> None:
     class EmptyBackend:
         def run_spec(self, context, category, spec, seed, ordinal_start):

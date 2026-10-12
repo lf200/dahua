@@ -503,7 +503,6 @@ class _DeepTeamBackend:
                 attacks=[attack],
                 attacks_per_vulnerability_type=1,
                 ignore_errors=True,
-                run_all_attacks=True,
                 _print_assessment=False,
                 _upload_to_confident=False,
             )

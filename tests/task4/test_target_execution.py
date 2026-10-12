@@ -41,7 +41,7 @@ def response_message(content="safe", tool_calls=None):
 @pytest.fixture
 def endpoint(monkeypatch):
     original = openai.OpenAI
-    calls, clients, timeouts = [], [], []
+    calls, clients, timeouts, headers = [], [], [], []
 
     def handler(_):
         return httpx.Response(200, json=response_message())
@@ -49,6 +49,7 @@ def endpoint(monkeypatch):
     def respond(req):
         payload = json.loads(req.content)
         calls.append(payload)
+        headers.append(dict(req.headers))
         timeouts.append(req.extensions["timeout"])
         return handler(payload)
 
@@ -69,7 +70,8 @@ def endpoint(monkeypatch):
         handler = value
 
     yield SimpleNamespace(
-        calls=calls, clients=clients, timeouts=timeouts, set_handler=set_handler
+        calls=calls, clients=clients, timeouts=timeouts, headers=headers,
+        set_handler=set_handler
     )
     for client in clients:
         client.close()
@@ -77,6 +79,24 @@ def endpoint(monkeypatch):
 
 def baseline():
     return benchmark_cases(load_matrix(), "quick")[0]
+
+
+@pytest.mark.parametrize("api_key", ["", "   ", "sk-secret-value"])
+@pytest.mark.parametrize("defense", ["none", "tool_filter"])
+def test_agentdojo_auth_headers_follow_target_key(
+    run_context, endpoint, monkeypatch, api_key, defense
+):
+    monkeypatch.setenv("OPENAI_API_KEY", "ambient-key-must-not-be-used")
+    run_context.target_client.api_key = api_key
+    adapter = AgentDojoAdapter()
+    adapter.validate(run_context)
+    adapter.run_case(run_context, baseline().model_copy(update={"defense": defense}))
+    assert endpoint.headers
+    for headers in endpoint.headers:
+        if api_key.strip():
+            assert headers["authorization"] == f"Bearer {api_key.strip()}"
+        else:
+            assert "authorization" not in headers
 
 
 @pytest.mark.parametrize(

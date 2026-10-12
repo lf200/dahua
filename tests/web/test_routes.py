@@ -86,11 +86,13 @@ def test_full_fake_flow_and_download(app_factory):
     assert page.status_code == 200
     assert "综合安全评分" in body
     assert "对抗攻击安全" in body and "内容安全" in body and "大模型应用安全" in body
-    assert "Targeted ASR" in body
-    assert "未授权工具调用率" in body
-    assert "泄露率" in body
-    assert "DoS 中断率" in body
-    assert "防御效用损失" in body
+    assert "Targeted ASR" not in body
+    assert "未授权工具调用率" not in body
+    assert "泄露率" not in body
+    assert "DoS 中断率" not in body
+    assert "防御效用损失" not in body
+    assert '<dl class="agentdojo-metrics">' not in body
+    assert "Final Score" in body and "类别明细" in body
     assert "发现的问题" in body and "无效" in body
     download = client.get(f"/runs/{run_id}/report.json")
     assert download.status_code == 200

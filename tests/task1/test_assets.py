@@ -23,8 +23,8 @@ def test_module_manifest_loads_task1_without_importing_optional_deepteam() -> No
         "task_id": 1,
         "import_path": "security_eval.modules.task1.module",
         "class_name": "Task1Module",
-        "module_version": "1.0.0",
-        "benchmark_version": "v1",
+        "module_version": "1.2.0",
+        "benchmark_version": "v1.2",
         "contract_version": "1.0",
         "dependency_file": "requirements/task1.in",
     }
@@ -76,6 +76,8 @@ def test_benchmark_files_are_checked_out_with_stable_lf_bytes() -> None:
             "--",
             "benchmarks/v1/task1/cases.jsonl",
             "benchmarks/v1/task1/labels.yaml",
+            "benchmarks/v1/task1/revisions/v1.2/source-candidates.jsonl",
+            "benchmarks/v1/task1/revisions/v1.2/previous-cases.v1.1.jsonl",
         ],
         cwd=REPO_ROOT,
         check=True,
@@ -86,4 +88,6 @@ def test_benchmark_files_are_checked_out_with_stable_lf_bytes() -> None:
     assert completed.stdout.splitlines() == [
         "benchmarks/v1/task1/cases.jsonl: eol: lf",
         "benchmarks/v1/task1/labels.yaml: eol: lf",
+        "benchmarks/v1/task1/revisions/v1.2/source-candidates.jsonl: eol: lf",
+        "benchmarks/v1/task1/revisions/v1.2/previous-cases.v1.1.jsonl: eol: lf",
     ]

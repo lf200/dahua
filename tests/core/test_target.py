@@ -48,6 +48,19 @@ def test_complete_rejects_invalid_shape(monkeypatch) -> None:
         client().complete([{"role": "user", "content": "hello"}])
 
 
+@pytest.mark.parametrize("api_key", ["", "   "])
+def test_complete_without_key_omits_authorization(monkeypatch, api_key) -> None:
+    def fake_urlopen(request, timeout):
+        assert not request.has_header("Authorization")
+        assert request.get_header("Content-type") == "application/json"
+        assert json.loads(request.data)["model"] == "server-model"
+        return FakeResponse({"choices": [{"message": {"content": "answer"}}]})
+
+    monkeypatch.setattr("security_eval.core.target.urlopen", fake_urlopen)
+    target = ChatClient("http://server.test/v1", api_key, "server-model")
+    assert target.complete([{"role": "user", "content": "hello"}]) == "answer"
+
+
 def test_http_error_does_not_include_secret(monkeypatch) -> None:
     def fail(*args, **kwargs):
         raise HTTPError("https://example.test", 401, "denied", {}, io.BytesIO())

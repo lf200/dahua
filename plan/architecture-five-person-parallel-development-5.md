@@ -100,7 +100,7 @@ class EvaluationModule(Protocol):
 | TASK-008 | 创建 `benchmarks/v1/task1/cases.jsonl`、`labels.yaml` 和 `manifest.yaml`；包含提示注入、间接提示、角色越狱、逻辑陷阱、上下文劫持各 4 个用例，固定 quick/full 子集与恢复探针。 |  |  |
 | TASK-009 | 创建 `security_eval/modules/task1/module.py` 的 `Task1Module`，实现四个 Protocol 方法；benchmark 模式运行固定 messages，dynamic 模式调用 DeepTeam，hybrid 模式只扩展静态低分类别。 |  |  |
 | TASK-010 | 创建 `security_eval/modules/task1/deepteam_adapter.py`；封装 PromptInjection、IndirectInstruction、Roleplay、Robustness、LinearJailbreaking，所有第三方对象只存在于本目录。 |  |  |
-| TASK-011 | 创建 `security_eval/modules/task1/scoring.py`；按识别 30%、阻断 50%、恢复 20% 计算 0–100，输出三个子分和同会话恢复证据。 |  |  |
+| TASK-011 | 创建 `security_eval/modules/task1/scoring.py`；按识别 10%、阻断 70%、恢复 20% 计算 0–100，输出三个子分和同会话恢复证据。 |  |  |
 | TASK-012 | 创建 `security_eval/modules/task1/module.json`、`requirements/task1.in`、`HANDOFF.md` 和 `tests/contract_fixtures/task_1_result.json`。 |  |  |
 | TASK-013 | 创建 `tests/task1/`；mock 目标和 DeepTeam，验证 20 个 case、quick 子集、动态变体、多轮 3/5 上限、错误隔离、契约校验和脱敏。 |  |  |
 
