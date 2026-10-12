@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from security_eval.contracts import (
     CaseResult,
+    ErrorInfo,
     Estimate,
     Evidence,
     Issue,
@@ -23,6 +25,7 @@ from security_eval.errors import (
     EvaluationError,
     EvaluationTimeoutError,
     ParseError,
+    TargetError,
     normalize_exception,
 )
 
@@ -43,7 +46,7 @@ from .scoring import (
 )
 from .trace_parser import parse_trace, sanitized_trace_payload
 
-MODULE_VERSION = "1.1.0"
+MODULE_VERSION = "1.1.1"
 
 
 class Task4Module:
@@ -147,7 +150,19 @@ class Task4Module:
                     available_injection_tasks=injections,
                 )
                 dynamic_results = self._run_cases(
-                    context, dynamic_matrix, "dynamic", cases_dir
+                    context,
+                    dynamic_matrix,
+                    "dynamic",
+                    cases_dir,
+                    blocked_error=next(
+                        (
+                            case.error
+                            for case in benchmark_results
+                            if case.error
+                            and case.error.details.get("target_unavailable")
+                        ),
+                        None,
+                    ),
                 )
 
         all_cases = benchmark_results + dynamic_results
@@ -199,15 +214,30 @@ class Task4Module:
         cases: list[MatrixCase],
         source: str,
         cases_dir: Path,
+        *,
+        blocked_error: ErrorInfo | None = None,
     ) -> list[CaseResult]:
         results: list[CaseResult] = []
         for case in cases:
+            if blocked_error is not None:
+                exc = TargetError(
+                    "Task 4 target is unavailable; case was not executed",
+                    case_id=case.case_id,
+                    retryable=False,
+                    details={
+                        **blocked_error.details,
+                        "blocked_by_case_id": blocked_error.case_id,
+                    },
+                )
+                results.append(self._invalid_case(context, case, source, exc))
+                continue
             if _now() >= _as_aware(context.deadline):
                 exc: Exception = EvaluationTimeoutError(
                     "Task 4 evaluation deadline reached", case_id=case.case_id
                 )
                 results.append(self._invalid_case(context, case, source, exc))
                 continue
+            started = time.perf_counter()
             try:
                 adapter_result: AdapterResult = self._adapter.run_case(context, case)
                 if adapter_result.error:
@@ -281,17 +311,34 @@ class Task4Module:
                         case_id=case.case_id,
                         details={"exception_type": type(exc).__name__},
                     )
-                results.append(self._invalid_case(context, case, source, exc))
+                invalid = self._invalid_case(
+                    context,
+                    case,
+                    source,
+                    exc,
+                    duration_ms=max(0, round((time.perf_counter() - started) * 1000)),
+                    executed=True,
+                )
+                results.append(invalid)
+                if invalid.error and invalid.error.details.get("target_unavailable"):
+                    blocked_error = invalid.error
         return results
 
     @staticmethod
     def _invalid_case(
-        context: RunContext, case: MatrixCase, source: str, exc: Exception
+        context: RunContext,
+        case: MatrixCase,
+        source: str,
+        exc: Exception,
+        *,
+        duration_ms: int = 0,
+        executed: bool = False,
     ) -> CaseResult:
         error = normalize_exception(exc, context.sanitize_value)
         if error.case_id is None:
             error = error.model_copy(update={"case_id": case.case_id})
-        return CaseResult(
+        relative_path = Path("task_4") / "cases" / f"{case.case_id}.json"
+        result = CaseResult(
             case_id=case.case_id,
             task_id=4,
             source=source,
@@ -300,10 +347,25 @@ class Task4Module:
             scenario=case.scenario,
             status="invalid",
             reason=error.message,
-            duration_ms=0,
+            input=context.sanitize_value(
+                {
+                    "suite": "workspace",
+                    "suite_version": "v1.2.2",
+                    "user_task_id": case.user_task_id,
+                    "injection_task_id": case.injection_task_id,
+                    "attack": case.attack,
+                    "defense": case.defense,
+                }
+            ),
+            duration_ms=duration_ms,
             error=error,
             evidence=[
-                Evidence(kind="error", summary=error.message, data=error.details)
+                Evidence(
+                    kind="error",
+                    summary=error.message,
+                    data=error.details,
+                    artifact_path=relative_path.as_posix(),
+                )
             ],
             metadata={
                 "suite": "workspace",
@@ -312,8 +374,27 @@ class Task4Module:
                 "injection_task_id": case.injection_task_id,
                 "attack": case.attack,
                 "defense": case.defense,
+                "executed": executed,
             },
         )
+        (context.artifact_dir / relative_path).write_text(
+            json.dumps(
+                context.sanitize_value(
+                    {
+                        "case_id": case.case_id,
+                        "status": "invalid",
+                        "input": result.input,
+                        "error": error.model_dump(mode="json"),
+                        "duration_ms": duration_ms,
+                        "executed": executed,
+                    }
+                ),
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        return result
 
     @staticmethod
     def _check_benchmark_version(request: ModuleRequest) -> None:

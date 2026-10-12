@@ -13,7 +13,7 @@ Real runs require an OpenAI-compatible endpoint with native chat tool-calling su
 - Project benchmark version: `v1`
 - AgentDojo package: `0.1.35`
 - AgentDojo suite: `workspace` version `v1.2.2`
-- Module version: `1.1.0`; only `defense=none` cases are executed in all modes.
+- Module version: `1.1.1`; only `defense=none` cases are executed in all modes.
 - `benchmark`: 8 quick or 24 full sandbox runs, selected in frozen-matrix order.
 - `dynamic`: seeded, previously uncovered user/injection/attack combinations, up to 6 quick or 18 full runs. The same original combination budget is retained without defense duplicates.
 - `hybrid`: frozen matrix followed by dynamic cases only for categories below 80 or containing invalid cases.
@@ -29,6 +29,22 @@ Every case creates a fresh workspace environment. DoS cases only test instructio
 `Task4Module.run()` returns only a validated `TaskResult`. Case-level scores include utility, utility-under-attack, targeted ASR, unauthorized tool-call rate, leakage rate, DoS interruption rate and security score. Defense utility loss and paired case IDs are not applicable to current unfiltered runs and are omitted rather than reported as zero. Invalid cases are excluded from metric denominators. Benchmark/dynamic 60/40 fusion and single-source behavior are unchanged.
 
 Sanitized traces are stored below the run directory as `task_4/cases/<case_id>.json`. They contain tool names and diff paths, not full system prompts, injection text, tool arguments, API keys, or third-party pipeline objects.
+
+## Target errors and diagnostic replay (1.1.1)
+
+The private OpenAI pipeline uses AgentDojo 0.1.35's native message/tool serializers with a single project-owned retry boundary. SDK retries and AgentDojo's blanket retries are not stacked. HTTP 400/401/403/404/422 are not blindly retried; connection errors, timeouts, HTTP 408/409/429 and 5xx receive at most three attempts, bounded by the task deadline. Recognized permanent quota/authentication/model errors stop further target calls in that task run. Planned but unexecuted cases retain `invalid`, `metadata.executed=false`, and `blocked_by_case_id`; they are not counted as model successes or failures. A case-local rejection does not block later cases.
+
+The deadline and per-request timeout are checked before every tool round and retry. `TARGET_MAX_TOKENS` is now honored for AgentDojo requests as it is for the shared chat client. Client connections close on both normal and exceptional execution. This changes execution behavior, not the score formula or the frozen matrix.
+
+Invalid cases retain their input IDs, measured case-attempt duration and a diagnostic artifact. Errors include HTTP status, allowlisted and sanitized provider code/parameter/message, request ID, model, message roles/count/content length, tool count and request attempts. Full response bodies, message content, injection text and tool arguments are not persisted. Successful artifacts also include request counts, timings, finish reasons and SDK usage when available.
+
+To replay historical cases after restoring a working target, run from the repository root:
+
+```powershell
+python -m scripts.diagnose_task4 --report data/runs/20261008T144915Z-52af3364/report.json --case-id t4-dyn-02-user_task_20-injection_task_1-tool_knowledge-none
+```
+
+Repeat `--case-id` to compare cases in one process. Each invocation saves a new timestamped `outputs/task4-diagnostics/<run_id>/diagnostic.json` and case artifacts, including the source report hash and public configuration; it does not alter historical results. This command calls the configured live endpoint. The offline HTTP regression tests are `tests/task4/test_target_execution.py`.
 
 ## Tests
 

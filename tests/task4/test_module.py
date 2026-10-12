@@ -72,7 +72,7 @@ def request(mode="benchmark", profile="quick"):
 def test_metadata_estimate_and_validation(run_context) -> None:
     module = Task4Module(adapter=FakeAdapter())
     assert module.metadata().task_id == 4
-    assert module.metadata().module_version == "1.1.0"
+    assert module.metadata().module_version == "1.1.1"
     assert module.estimate(request("benchmark")).expected_cases == 8
     assert module.estimate(request("dynamic")).expected_cases == 6
     assert module.estimate(request("hybrid")).expected_cases == 14
@@ -271,7 +271,7 @@ def test_every_mode_runs_without_tool_filter_and_preserves_contract(
     module = Task4Module(adapter=adapter)
     result = module.run(run_context, request(mode, profile))
     assert len(adapter.calls) == len(result.cases) == expected
-    assert result.module_version == module.metadata().module_version == "1.1.0"
+    assert result.module_version == module.metadata().module_version == "1.1.1"
     assert result.contract_version == "1.0"
     assert result.errors == []
     assert {case.metadata["defense"] for case in result.cases} == {"none"}

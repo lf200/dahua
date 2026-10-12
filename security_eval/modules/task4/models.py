@@ -90,6 +90,7 @@ class AdapterResult(PrivateModel):
     duration_ms: int = Field(ge=0)
     error: str | None = None
     agentdojo_version: str = "0.1.35"
+    request_diagnostics: tuple[dict[str, Any], ...] = ()
 
 
 class ParsedTrace(PrivateModel):

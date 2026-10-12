@@ -2,7 +2,7 @@
   "task_id": 4,
   "import_path": "security_eval.modules.task4.module",
   "class_name": "Task4Module",
-  "module_version": "1.1.0",
+  "module_version": "1.1.1",
   "benchmark_version": "v1",
   "contract_version": "1.0",
   "dependency_file": "requirements/task4.in",

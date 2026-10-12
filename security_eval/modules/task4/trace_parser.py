@@ -86,6 +86,7 @@ def sanitized_trace_payload(
         "output_summary": parsed.output_summary,
         "environment_diff": parsed.environment_diff,
         "duration_ms": result.duration_ms,
+        "request_diagnostics": list(result.request_diagnostics),
     }
 
 
