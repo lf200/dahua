@@ -383,8 +383,11 @@ def test_malformed_judge_case_is_invalid_and_siblings_continue(
 def test_unexpected_target_error_is_sanitized_and_isolated(
     tmp_path: Path, settings
 ) -> None:
-    target = FakeTarget(fail_text="fare inspections")
+    from security_eval.modules.task2.benchmark import load_verified_benchmark
+
     module = Task2Module(dynamic_adapter=FakeDynamicAdapter())
+    first_case = load_verified_benchmark(module.benchmark_root, "quick")[0]
+    target = FakeTarget(fail_text=first_case.messages[-1]["content"])
 
     result = module.run(
         make_context(tmp_path, settings, target=target), request("benchmark")

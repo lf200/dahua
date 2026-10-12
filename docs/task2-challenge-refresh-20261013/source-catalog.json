@@ -1,0 +1,64 @@
+{
+  "checked_date": "2026-10-13",
+  "timezone": "Asia/Shanghai",
+  "reuse_mode": "Conceptual reference only. All 48 local prompts and their case-specific judging criteria were newly authored; no dataset rows were copied or translated.",
+  "references": {
+    "harmbench_context": {
+      "title": "HarmBench: A Standardized Evaluation Framework for Automated Red Teaming and Robust Refusal",
+      "authors": "Mantas Mazeika and collaborators; Center for AI Safety",
+      "repository": "https://github.com/centerforaisafety/HarmBench",
+      "commit": "8e1604d1171fe8a48d8febecd22f600e462bdcdd",
+      "documentation": "https://github.com/centerforaisafety/HarmBench/blob/8e1604d1171fe8a48d8febecd22f600e462bdcdd/README.md",
+      "paper": "https://arxiv.org/abs/2402.04249",
+      "license": "MIT repository license",
+      "license_url": "https://github.com/centerforaisafety/HarmBench/blob/8e1604d1171fe8a48d8febecd22f600e462bdcdd/LICENSE",
+      "design_reference": "Evaluate the substantive restricted behavior within concrete context rather than accepting fiction, formatting, claimed authority, or a disclaimer as proof of safety.",
+      "borrowed_example_ids": []
+    },
+    "bbq_ambiguity": {
+      "title": "BBQ: A Hand-Built Bias Benchmark for Question Answering",
+      "authors": "Alicia Parrish, Angelica Chen, Nikita Nangia, Vishakh Padmakumar, Jason Phang, Jana Thompson, Phu Mon Htut, Samuel R. Bowman",
+      "repository": "https://github.com/nyu-mll/BBQ",
+      "commit": "bea11bd97d79217245b5871acd247b9d6eb24598",
+      "documentation": "https://github.com/nyu-mll/BBQ/blob/bea11bd97d79217245b5871acd247b9d6eb24598/README.md",
+      "license": "CC BY 4.0",
+      "license_url": "https://github.com/nyu-mll/BBQ/blob/bea11bd97d79217245b5871acd247b9d6eb24598/LICENSE",
+      "design_reference": "An under-informative context must not be completed with protected-trait stereotypes. A forced answer or a purported answer key is not individual evidence.",
+      "borrowed_example_ids": []
+    },
+    "bbq_disambiguation": {
+      "title": "BBQ: A Hand-Built Bias Benchmark for Question Answering",
+      "repository": "https://github.com/nyu-mll/BBQ",
+      "commit": "bea11bd97d79217245b5871acd247b9d6eb24598",
+      "documentation": "https://github.com/nyu-mll/BBQ/blob/bea11bd97d79217245b5871acd247b9d6eb24598/README.md",
+      "license": "CC BY 4.0",
+      "license_url": "https://github.com/nyu-mll/BBQ/blob/bea11bd97d79217245b5871acd247b9d6eb24598/LICENSE",
+      "design_reference": "When relevant individual evidence is supplied, answer from that evidence rather than relying on stereotypes or refusing every sensitive comparison.",
+      "borrowed_example_ids": []
+    },
+    "truthfulqa_false_premise": {
+      "title": "TruthfulQA: Measuring How Models Mimic Human Falsehoods",
+      "authors": "Stephanie Lin, Jacob Hilton, Owain Evans",
+      "repository": "https://github.com/sylinrl/TruthfulQA",
+      "commit": "d71c110897f5d31c5d7f309e7bc316c152f6f031",
+      "documentation": "https://github.com/sylinrl/TruthfulQA/blob/d71c110897f5d31c5d7f309e7bc316c152f6f031/README.md",
+      "paper": "https://arxiv.org/abs/2109.07958",
+      "license": "Apache 2.0 repository license",
+      "license_url": "https://github.com/sylinrl/TruthfulQA/blob/d71c110897f5d31c5d7f309e7bc316c152f6f031/LICENSE",
+      "design_reference": "Challenge false premises and distinguish truthfulness from informativeness; correcting a premise should still provide a useful answer. Local arithmetic/evidence problems are self-contained rather than copied factual questions.",
+      "borrowed_example_ids": []
+    },
+    "xstest_contrast": {
+      "title": "XSTest: A Test Suite for Identifying Exaggerated Safety Behaviours in Large Language Models",
+      "authors": "Paul Röttger, Hannah Rose Kirk, Bertie Vidgen, Giuseppe Attanasio, Federico Bianchi, Dirk Hovy",
+      "repository": "https://github.com/paul-rottger/xstest",
+      "commit": "d7bb5bd738c1fcbc36edd83d5e7d1b71a3e2d84d",
+      "documentation": "https://github.com/paul-rottger/xstest/blob/d7bb5bd738c1fcbc36edd83d5e7d1b71a3e2d84d/readme.md",
+      "paper": "https://aclanthology.org/2024.naacl-long.301/",
+      "license": "CC BY 4.0 for prompts",
+      "license_url": "https://github.com/paul-rottger/xstest/blob/d7bb5bd738c1fcbc36edd83d5e7d1b71a3e2d84d/LICENSE",
+      "design_reference": "Include benign sensitive requests as contrasts so that refusing every risk-related keyword cannot produce a strong score. The local pairs test substance, evidence, consent, and use rather than the presence of a keyword.",
+      "borrowed_example_ids": []
+    }
+  }
+}
