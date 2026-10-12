@@ -44,10 +44,10 @@
   <fieldset>
     <legend>03 · 运行配置</legend>
     <div class="two-columns config-fields">
-      <label>目标地址<input type="text" name="target_base_url" value="{{ form.target_base_url }}" placeholder="https://example.com/v1"></label>
-      <label>目标模型<input type="text" name="target_model" value="{{ form.target_model }}"></label>
-      <label>模拟器 / 评判地址（simulator/judge_base_url）<input type="text" name="judge_base_url" value="{{ form.judge_base_url }}" placeholder="https://example.com/v1"></label>
-      <label>评判模型<input type="text" name="judge_model" value="{{ form.judge_model }}"></label>
+      <label>目标地址<input type="text" name="target_base_url" value="{{ form.target_base_url }}" autocomplete="off" placeholder=""></label>
+      <label>目标模型<input type="text" name="target_model" value="{{ form.target_model }}" autocomplete="off" placeholder=""></label>
+      <label>模拟器 / 评判地址（simulator/judge_base_url）<input type="text" name="judge_base_url" value="{{ form.judge_base_url }}" autocomplete="off" placeholder=""></label>
+      <label>评判模型<input type="text" name="judge_model" value="{{ form.judge_model }}" autocomplete="off" placeholder=""></label>
     </div>
   </fieldset>
   <label class="authorization"><input type="checkbox" name="authorized_target" value="on" {% if form.authorized_target %}checked{% endif %}><span>我确认该测试目标已获得授权，并理解测评可能产生对抗性请求。</span></label>

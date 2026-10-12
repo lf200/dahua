@@ -163,7 +163,6 @@ def create_routes_blueprint(
         for key, value in dict(public_settings or {}).items()
         if key in PUBLIC_SETTING_KEYS
     }
-    config_defaults = {key: str(safe_settings.get(key, "")) for key in EDITABLE_SETTINGS}
 
     # ========================================================
     # GET /
@@ -173,7 +172,7 @@ def create_routes_blueprint(
     def index() -> str:
         """Render the evaluation start page."""
 
-        form_values = {**DEFAULT_FORM, **config_defaults}
+        form_values = {**DEFAULT_FORM, **{key: "" for key in EDITABLE_SETTINGS}}
 
         return _render_index(
             manager=manager,
@@ -240,7 +239,7 @@ def create_routes_blueprint(
             config_overrides = {
                 key: form_values[key]
                 for key in EDITABLE_SETTINGS
-                if key in request.form and form_values[key] != config_defaults[key]
+                if form_values[key]
             }
             if "target_model" in config_overrides:
                 config_overrides["agentdojo_model"] = config_overrides["target_model"]

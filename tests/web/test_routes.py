@@ -2,6 +2,15 @@ from __future__ import annotations
 
 import threading
 import time
+from html.parser import HTMLParser
+
+import pytest
+
+from security_eval.core.config import Settings
+from security_eval.core.registry import ModuleRegistry
+from security_eval.core.service import EvaluationService
+from security_eval.web.app import create_app
+from tests.fakes.fake_module import FakeTask1Module
 
 
 VALID_FORM = {
@@ -12,6 +21,24 @@ VALID_FORM = {
     "benchmark_version": "v1",
     "authorized_target": "on",
 }
+
+RUNTIME_DEFAULTS = {
+    "target_base_url": "https://configured-target.invalid/v1",
+    "target_model": "configured-target",
+    "judge_base_url": "https://configured-judge.invalid/v1",
+    "judge_model": "configured-judge",
+}
+
+
+class RuntimeInputs(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.inputs = {}
+
+    def handle_starttag(self, tag, attrs):
+        attributes = dict(attrs)
+        if tag == "input" and attributes.get("name") in RUNTIME_DEFAULTS:
+            self.inputs[attributes["name"]] = attributes
 
 
 def wait_final(client, location):
@@ -35,8 +62,115 @@ def test_index_and_secret_filter(app_factory):
     assert "大模型安全综合测评" in body
     assert "预计测试用例" in body
     assert "110" in body
-    assert "safe-model" in body
+    assert 'name="target_model" value=""' in body
+    assert "safe-model" not in body
     assert "SECRET-DO-NOT-SHOW" not in body
+
+
+def test_homepage_runtime_inputs_start_blank_even_with_configured_defaults(app_factory):
+    response = app_factory(public_settings=RUNTIME_DEFAULTS).test_client().get("/")
+    parser = RuntimeInputs()
+    parser.feed(response.get_data(as_text=True))
+    assert set(parser.inputs) == set(RUNTIME_DEFAULTS)
+    assert all(item["value"] == "" for item in parser.inputs.values())
+    assert all(item["autocomplete"] == "off" for item in parser.inputs.values())
+
+
+@pytest.mark.parametrize("blank", ["", "   "])
+def test_blank_runtime_inputs_do_not_override_backend_defaults(app_factory, monkeypatch, blank):
+    app = app_factory(public_settings=RUNTIME_DEFAULTS)
+    manager = app.extensions["security_eval.run_manager"]
+    original_start = manager.start
+    overrides = []
+
+    def start(request, *, config_overrides=None):
+        overrides.append(config_overrides)
+        return original_start(request, config_overrides=config_overrides)
+
+    monkeypatch.setattr(manager, "start", start)
+    client = app.test_client()
+    response = client.post("/runs", data={**VALID_FORM, **{key: blank for key in RUNTIME_DEFAULTS}})
+    assert response.status_code == 303
+    assert wait_final(client, response.headers["Location"])["status"] == "completed"
+    assert overrides == [{}]
+
+
+@pytest.mark.parametrize(
+    ("provided", "expected"),
+    [
+        ({"target_model": "  new-target  "}, {"target_model": "new-target", "agentdojo_model": "new-target"}),
+        ({"judge_model": "new-judge"}, {"judge_model": "new-judge"}),
+        ({"target_base_url": "http://localhost:8000/v1"}, {"target_base_url": "http://localhost:8000/v1"}),
+    ],
+)
+def test_only_filled_runtime_inputs_override_defaults(app_factory, monkeypatch, provided, expected):
+    app = app_factory(public_settings=RUNTIME_DEFAULTS)
+    captured = []
+
+    def start(request, *, config_overrides=None):
+        captured.append(config_overrides)
+        return "runtime-override01"
+
+    monkeypatch.setattr(app.extensions["security_eval.run_manager"], "start", start)
+    response = app.test_client().post(
+        "/runs", data={**VALID_FORM, **{key: "" for key in RUNTIME_DEFAULTS}, **provided}
+    )
+    assert response.status_code == 303
+    assert captured == [expected]
+
+
+@pytest.mark.parametrize("provided", [{}, {"target_model": "new-target"}])
+def test_runtime_settings_retain_unfilled_defaults_and_credentials(tmp_path, provided):
+    seen = []
+
+    class RecordingModule(FakeTask1Module):
+        def run(self, context, request):
+            seen.append(context.settings)
+            return super().run(context, request)
+
+    settings = Settings(
+        **RUNTIME_DEFAULTS,
+        target_api_key="fixture-target-key",
+        judge_api_key="fixture-judge-key",
+        agentdojo_model=RUNTIME_DEFAULTS["target_model"],
+        output_root=tmp_path,
+    )
+    registry = ModuleRegistry()
+    registry.register(RecordingModule())
+    service = EvaluationService(
+        settings=settings, registry=registry, target_client=object(), judge_client=object()
+    )
+    app = create_app(
+        service=service, output_root=tmp_path, public_settings=settings.public_summary(), testing=True
+    )
+    try:
+        client = app.test_client()
+        response = client.post(
+            "/runs",
+            data={**VALID_FORM, "tasks": ["1"], **{key: "" for key in RUNTIME_DEFAULTS}, **provided},
+        )
+        assert response.status_code == 303
+        assert wait_final(client, response.headers["Location"])["status"] == "completed"
+        assert len(seen) == 1
+        for key, value in RUNTIME_DEFAULTS.items():
+            assert getattr(seen[0], key) == provided.get(key, value)
+        assert seen[0].agentdojo_model == seen[0].target_model
+        assert seen[0].target_api_key.get_secret_value() == "fixture-target-key"
+        assert seen[0].judge_api_key.get_secret_value() == "fixture-judge-key"
+        assert settings.target_model == RUNTIME_DEFAULTS["target_model"]
+    finally:
+        app.extensions["security_eval.run_manager"].shutdown(wait=True)
+        service.shutdown(wait=True)
+
+
+def test_invalid_submission_keeps_entered_runtime_values(app_factory):
+    client = app_factory(public_settings=RUNTIME_DEFAULTS).test_client()
+    response = client.post("/runs", data={"target_model": "custom-target"})
+    assert response.status_code == 400
+    parser = RuntimeInputs()
+    parser.feed(response.get_data(as_text=True))
+    assert parser.inputs["target_model"]["value"] == "custom-target"
+    assert parser.inputs["judge_model"]["value"] == ""
 
 
 def test_estimate_api_updates_for_selection(app_factory):
