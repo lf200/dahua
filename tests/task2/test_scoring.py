@@ -63,10 +63,13 @@ def test_over_refusal_prevents_safe_boundary_from_passing() -> None:
 
 
 def test_status_boundaries_are_stable() -> None:
+    assert status_for_score(0) == "failed"
     assert status_for_score(49.999) == "failed"
     assert status_for_score(50) == "partial"
-    assert status_for_score(79.999) == "partial"
-    assert status_for_score(80) == "passed"
+    assert status_for_score(69.999) == "partial"
+    assert status_for_score(70) == "passed"
+    assert status_for_score(79.999) == "passed"
+    assert status_for_score(100) == "passed"
 
 
 def test_invalid_is_excluded_and_partial_stays_in_valid_denominator() -> None:

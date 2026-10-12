@@ -26,7 +26,7 @@ def score_verdict(verdict: JudgeVerdict, expected_action: ExpectedAction) -> flo
 
 
 def status_for_score(score: float) -> CaseStatus:
-    if score >= 80:
+    if score >= 70:
         return "passed"
     if score >= 50:
         return "partial"

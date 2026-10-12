@@ -234,6 +234,66 @@ def test_full_fake_flow_and_download(app_factory):
     assert download.headers["Cache-Control"] == "no-store"
 
 
+def test_task2_partial_counts_as_failed_in_result_page_only(app_factory, monkeypatch):
+    from security_eval.web.presentation import build_run_view
+    from tests.web.conftest import FakeEvaluationService
+
+    original = FakeEvaluationService.execute
+
+    def with_partials(self, request, *, run_id=None):
+        report = original(self, request, run_id=run_id)
+        updated = []
+        for task in report.task_results:
+            base = task.cases[1]
+            partials = [base.model_copy(update={"case_id": f"t{task.task_id}-partial-benchmark", "status": "partial"})]
+            if task.task_id == 2:
+                partials.append(base.model_copy(update={
+                    "case_id": "t2-partial-dynamic", "status": "partial", "source": "dynamic", "category": "Bias",
+                }))
+            summaries = [summary.model_copy(update={
+                "valid_cases": summary.valid_cases + sum(case.category == summary.category for case in partials),
+            }) for summary in task.category_summaries]
+            updated.append(task.model_copy(update={"cases": [*task.cases, *partials], "category_summaries": summaries}))
+        return report.model_copy(update={"task_results": updated})
+
+    monkeypatch.setattr(FakeEvaluationService, "execute", with_partials)
+    client = app_factory().test_client()
+    response = client.post("/runs", data=VALID_FORM)
+    location = response.headers["Location"]
+    wait_final(client, location)
+    run_id = location.rsplit("/", 1)[-1]
+    downloaded = client.get(f"/runs/{run_id}/report.json").get_json()
+    from security_eval.contracts import RunReport
+
+    report = RunReport.model_validate(downloaded)
+    before = report.model_dump()
+    view = build_run_view(report)
+    assert report.model_dump() == before
+    task2 = next(task for task in view["tasks"] if task["task_id"] == 2)
+    assert task2["counts"] == {"total": 6, "passed": 1, "failed": 4, "partial": 0, "invalid": 1}
+    for category in task2["categories"]:
+        original_category = next(c for c in report.task_results[1].category_summaries if c.category == category["category"])
+        assert category["score"] == original_category.score
+        assert category["failed_cases"] == original_category.failed_cases + (category["category"] in {"Bias", "Toxicity"})
+    for task, source in zip(view["tasks"], report.task_results):
+        assert task["final_score"] == source.final_score
+        assert task["benchmark_score"] == source.benchmark_score
+        assert task["dynamic_score"] == source.dynamic_score
+        if task["task_id"] != 2:
+            assert task["counts"]["partial"] == sum(c.status == "partial" for c in source.cases)
+            assert task["counts"]["failed"] == sum(c.status == "failed" for c in source.cases)
+            assert [c["failed_cases"] for c in task["categories"]] == [c.failed_cases for c in source.category_summaries]
+    assert view["case_counts"]["failed"] == sum(c.status == "failed" or (c.task_id == 2 and c.status == "partial") for t in report.task_results for c in t.cases)
+    assert sum(view["case_counts"][key] for key in ("passed", "failed", "partial", "invalid")) == view["case_counts"]["total"]
+    assert sum(c["status"] == "partial" for t in downloaded["task_results"] if t["task_id"] == 2 for c in t["cases"]) == 2
+    body = client.get(location).get_data(as_text=True)
+    assert f'{view["case_counts"]["passed"]} 通过 · {view["case_counts"]["failed"]} 失败 · {view["case_counts"]["invalid"]} 无效' in body
+    task2_body = body.split("<small>Task 2</small>", 1)[1].split("</article>", 1)[0]
+    assert "<dt>Failed</dt><dd>4</dd>" in task2_body
+    assert "<td>Bias</td><td>40.0</td><td>0</td><td>2</td><td>0</td>" in task2_body
+    assert "<td>Toxicity</td><td>0.0</td><td>0</td><td>2</td><td>0</td>" in task2_body
+
+
 def test_single_active_run_returns_conflict(app_factory):
     gate = threading.Event()
     app = app_factory(gate=gate)

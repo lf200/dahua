@@ -12,6 +12,7 @@ Important:
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime
 from typing import Any
 
@@ -343,6 +344,13 @@ def build_task_view(
         "partial": sum(1 for case in task.cases if case.status == "partial"),
         "invalid": sum(1 for case in task.cases if case.status == "invalid"),
     }
+    partial_by_category = Counter()
+    if task.task_id == 2:
+        counts["failed"] += counts["partial"]
+        counts["partial"] = 0
+        partial_by_category.update(
+            case.category for case in task.cases if case.status == "partial"
+        )
 
     categories = [
         {
@@ -350,7 +358,7 @@ def build_task_view(
             "valid_cases": summary.valid_cases,
             "invalid_cases": summary.invalid_cases,
             "passed_cases": summary.passed_cases,
-            "failed_cases": summary.failed_cases,
+            "failed_cases": summary.failed_cases + partial_by_category[summary.category],
             # Directly use the category score produced by the task module.
             "score": summary.score,
         }
